@@ -31,7 +31,12 @@ export function getAdminConfig(): AdminConfig {
   try {
     if (existsSync(CONFIG_FILE)) {
       const raw = readFileSync(CONFIG_FILE, "utf-8");
-      return JSON.parse(raw) as AdminConfig;
+      const config = JSON.parse(raw) as AdminConfig;
+      // Ensure new fields have defaults for existing configs
+      if (!config.pricing.discountPeriods) {
+        config.pricing.discountPeriods = [];
+      }
+      return config;
     }
   } catch {
     // Fall through to defaults

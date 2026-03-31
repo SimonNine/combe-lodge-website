@@ -255,6 +255,7 @@ function BookingPageInner() {
                         checkOut={checkOut}
                         onSelectDate={handleSelectDate}
                         bookedDates={bookedDates}
+                        pricing={adminPricing}
                       />
                     </div>
 
@@ -367,6 +368,8 @@ function BookingPageInner() {
                   deposit={pricing.deposit}
                   checkIn={checkIn!}
                   checkOut={checkOut!}
+                  discount={pricing.discount}
+                  undiscountedTotal={pricing.undiscountedTotal}
                 />
               ) : (
                 <div className="bg-stone/50 rounded-[10px] p-5 text-center border border-dark/5">

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { formatDate, getRateForDate, formatPrice, DEFAULT_PRICING } from "@/lib/booking-rules";
+import { formatDate, getRateForDate, formatPrice, DEFAULT_PRICING, type PricingConfig } from "@/lib/booking-rules";
 
 interface CalendarProps {
   checkIn: Date | null;
@@ -10,6 +10,7 @@ interface CalendarProps {
   onSelectDate: (date: Date) => void;
   bookedDates?: string[];
   blockedDates?: string[];
+  pricing?: PricingConfig;
 }
 
 const DAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
@@ -24,6 +25,7 @@ export default function Calendar({
   onSelectDate,
   bookedDates = [],
   blockedDates = [],
+  pricing = DEFAULT_PRICING,
 }: CalendarProps) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -148,7 +150,7 @@ export default function Calendar({
             const booked = isDateBooked(date);
             const selected = isCheckIn(date) || isCheckOut(date);
             const inRange = isInRange(date);
-            const nightlyRate = !unavailable ? getRateForDate(date, DEFAULT_PRICING) : 0;
+            const nightlyRate = !unavailable ? getRateForDate(date, pricing) : 0;
 
             return (
               <motion.button

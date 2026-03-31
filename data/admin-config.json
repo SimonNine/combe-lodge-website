@@ -28,11 +28,12 @@
       {
         "id": "1774983024459",
         "name": "Tester",
-        "startDate": "2026-04-01",
+        "startDate": "2026-03-31",
         "endDate": "2026-04-05",
         "nightlyRate": 200000
       }
-    ]
+    ],
+    "discountPeriods": []
   },
   "rules": {
     "minNights": 2,

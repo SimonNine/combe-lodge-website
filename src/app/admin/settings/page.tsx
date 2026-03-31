@@ -2,18 +2,22 @@
 
 import { useState, useEffect } from "react";
 import type { SiteSettings } from "@/lib/admin-config";
+import { useUnsavedChanges } from "@/components/admin/UnsavedChangesContext";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const { setDirty } = useUnsavedChanges();
 
   useEffect(() => {
     fetch("/api/admin/config")
       .then((r) => r.json())
       .then((d) => setSettings(d.siteSettings));
   }, []);
+
+  const updateSettings = (updated: SiteSettings) => { setSettings(updated); setDirty(true); };
 
   const save = async () => {
     if (!settings) return;
@@ -23,6 +27,7 @@ export default function SettingsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ siteSettings: settings }),
     });
+    if (res.ok) setDirty(false);
     setSaveState(res.ok ? "saved" : "error");
     setTimeout(() => setSaveState("idle"), 2500);
   };
@@ -47,13 +52,13 @@ export default function SettingsPage() {
           <Field
             label="Hero tagline"
             value={settings.tagline}
-            onChange={(v) => setSettings({ ...settings, tagline: v })}
+            onChange={(v) => updateSettings({ ...settings, tagline: v })}
             hint='Shown under "Combe Lodge" on the homepage hero'
           />
           <TextareaField
             label="Check-in instructions"
             value={settings.checkInInstructions}
-            onChange={(v) => setSettings({ ...settings, checkInInstructions: v })}
+            onChange={(v) => updateSettings({ ...settings, checkInInstructions: v })}
             hint="Sent to guests in their booking confirmation email"
             rows={4}
           />
@@ -69,13 +74,13 @@ export default function SettingsPage() {
           <Field
             label="Phone number"
             value={settings.contactPhone}
-            onChange={(v) => setSettings({ ...settings, contactPhone: v })}
+            onChange={(v) => updateSettings({ ...settings, contactPhone: v })}
             placeholder="+44 7XXX XXXXXX"
           />
           <Field
             label="Email address"
             value={settings.contactEmail}
-            onChange={(v) => setSettings({ ...settings, contactEmail: v })}
+            onChange={(v) => updateSettings({ ...settings, contactEmail: v })}
             placeholder="hello@combelodge.co.uk"
           />
         </div>

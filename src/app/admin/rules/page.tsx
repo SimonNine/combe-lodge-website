@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { BookingRules } from "@/lib/booking-rules";
+import { useUnsavedChanges } from "@/components/admin/UnsavedChangesContext";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -10,6 +11,10 @@ export default function RulesPage() {
   const [blackoutDates, setBlackoutDates] = useState<string[]>([]);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [newBlackout, setNewBlackout] = useState({ start: "", end: "" });
+  const { setDirty } = useUnsavedChanges();
+
+  const updateRules = (updated: BookingRules) => { setRules(updated); setDirty(true); };
+  const updateBlackouts = (updated: string[]) => { setBlackoutDates(updated); setDirty(true); };
 
   useEffect(() => {
     fetch("/api/admin/config")
@@ -27,6 +32,7 @@ export default function RulesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rules: updatedRules, blackoutDates: updatedBlackouts }),
     });
+    if (res.ok) setDirty(false);
     setSaveState(res.ok ? "saved" : "error");
     setTimeout(() => setSaveState("idle"), 2500);
   };
@@ -109,7 +115,7 @@ export default function RulesPage() {
               type="number"
               min={1}
               value={rules.minNights}
-              onChange={(e) => setRules({ ...rules, minNights: parseInt(e.target.value) || 1 })}
+              onChange={(e) => updateRules({ ...rules, minNights: parseInt(e.target.value) || 1 })}
               className="w-full px-3 py-2 rounded-lg border border-dark/10 font-sans text-sm text-dark focus:outline-none focus:border-sage transition-colors"
             />
             <p className="font-sans text-[10px] text-dark/25 mt-1">Per-season overrides set in Pricing</p>
@@ -123,7 +129,7 @@ export default function RulesPage() {
               min={1}
               max={10}
               value={rules.maxGuests}
-              onChange={(e) => setRules({ ...rules, maxGuests: parseInt(e.target.value) || 4 })}
+              onChange={(e) => updateRules({ ...rules, maxGuests: parseInt(e.target.value) || 4 })}
               className="w-full px-3 py-2 rounded-lg border border-dark/10 font-sans text-sm text-dark focus:outline-none focus:border-sage transition-colors"
             />
           </div>
@@ -134,7 +140,7 @@ export default function RulesPage() {
             <input
               type="time"
               value={rules.checkInTime}
-              onChange={(e) => setRules({ ...rules, checkInTime: e.target.value })}
+              onChange={(e) => updateRules({ ...rules, checkInTime: e.target.value })}
               className="w-full px-3 py-2 rounded-lg border border-dark/10 font-sans text-sm text-dark focus:outline-none focus:border-sage transition-colors"
             />
           </div>
@@ -145,7 +151,7 @@ export default function RulesPage() {
             <input
               type="time"
               value={rules.checkOutTime}
-              onChange={(e) => setRules({ ...rules, checkOutTime: e.target.value })}
+              onChange={(e) => updateRules({ ...rules, checkOutTime: e.target.value })}
               className="w-full px-3 py-2 rounded-lg border border-dark/10 font-sans text-sm text-dark focus:outline-none focus:border-sage transition-colors"
             />
           </div>
@@ -156,7 +162,7 @@ export default function RulesPage() {
       <Card title="Weekend Rule" className="mt-5">
         <div className="flex items-start gap-4">
           <button
-            onClick={() => setRules({ ...rules, weekendRule: !rules.weekendRule })}
+            onClick={() => updateRules({ ...rules, weekendRule: !rules.weekendRule })}
             className={`mt-0.5 w-10 h-5 rounded-full transition-colors flex-shrink-0 relative ${
               rules.weekendRule ? "bg-moss" : "bg-dark/15"
             }`}

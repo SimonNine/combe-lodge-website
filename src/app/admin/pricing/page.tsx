@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { PricingConfig, SeasonalPricing } from "@/lib/booking-rules";
+import type { PricingConfig, SeasonalPricing, DiscountPeriod } from "@/lib/booking-rules";
+import { useUnsavedChanges } from "@/components/admin/UnsavedChangesContext";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -15,10 +16,16 @@ function gbpToPence(str: string): number {
 export default function PricingPage() {
   const [pricing, setPricing] = useState<PricingConfig | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const { setDirty } = useUnsavedChanges();
   const [newSeason, setNewSeason] = useState<Partial<SeasonalPricing>>({});
   const [showAddSeason, setShowAddSeason] = useState(false);
   const [editingSeasonId, setEditingSeasonId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<Partial<SeasonalPricing>>({});
+
+  const [newDiscount, setNewDiscount] = useState<Partial<DiscountPeriod>>({});
+  const [showAddDiscount, setShowAddDiscount] = useState(false);
+  const [editingDiscountId, setEditingDiscountId] = useState<string | null>(null);
+  const [editDiscountDraft, setEditDiscountDraft] = useState<Partial<DiscountPeriod>>({});
 
   useEffect(() => {
     fetch("/api/admin/config")
@@ -33,7 +40,12 @@ export default function PricingPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pricing: updated }),
     });
-    setSaveState(res.ok ? "saved" : "error");
+    if (res.ok) {
+      setSaveState("saved");
+      setDirty(false);
+    } else {
+      setSaveState("error");
+    }
     setTimeout(() => setSaveState("idle"), 2500);
   };
 
@@ -41,6 +53,7 @@ export default function PricingPage() {
     if (!pricing) return;
     const updated = { ...pricing, [field]: value };
     setPricing(updated);
+    setDirty(true);
   };
 
   const deleteSeason = (id: string) => {
@@ -60,6 +73,7 @@ export default function PricingPage() {
       // convert pence to display pounds for the rate field
       nightlyRate: season.nightlyRate / 100,
     });
+    setDirty(true);
   };
 
   const saveEdit = () => {
@@ -102,6 +116,57 @@ export default function PricingPage() {
     setPricing(updated);
     setNewSeason({});
     setShowAddSeason(false);
+    save(updated);
+  };
+
+  const deleteDiscount = (id: string) => {
+    if (!pricing) return;
+    const updated = {
+      ...pricing,
+      discountPeriods: (pricing.discountPeriods || []).filter((d) => d.id !== id),
+    };
+    setPricing(updated);
+    save(updated);
+  };
+
+  const startEditDiscount = (discount: DiscountPeriod) => {
+    setEditingDiscountId(discount.id || discount.name);
+    setEditDiscountDraft({ ...discount });
+    setDirty(true);
+  };
+
+  const saveEditDiscount = () => {
+    if (!pricing || !editDiscountDraft.name || !editDiscountDraft.startDate || !editDiscountDraft.endDate || !editDiscountDraft.discountPercent) return;
+    const updated = {
+      ...pricing,
+      discountPeriods: (pricing.discountPeriods || []).map((d) =>
+        (d.id || d.name) === editingDiscountId
+          ? { ...d, name: editDiscountDraft.name!, startDate: editDiscountDraft.startDate!, endDate: editDiscountDraft.endDate!, discountPercent: Number(editDiscountDraft.discountPercent) }
+          : d
+      ),
+    };
+    setPricing(updated);
+    setEditingDiscountId(null);
+    setEditDiscountDraft({});
+    save(updated);
+  };
+
+  const addDiscount = () => {
+    if (!pricing || !newDiscount.name || !newDiscount.startDate || !newDiscount.endDate || !newDiscount.discountPercent) return;
+    const discount: DiscountPeriod = {
+      id: Date.now().toString(),
+      name: newDiscount.name,
+      startDate: newDiscount.startDate,
+      endDate: newDiscount.endDate,
+      discountPercent: Number(newDiscount.discountPercent),
+    };
+    const updated = {
+      ...pricing,
+      discountPeriods: [...(pricing.discountPeriods || []), discount],
+    };
+    setPricing(updated);
+    setNewDiscount({});
+    setShowAddDiscount(false);
     save(updated);
   };
 
@@ -310,6 +375,76 @@ export default function PricingPage() {
             className="flex items-center gap-2 text-moss font-sans text-xs font-medium hover:text-moss-light transition-colors"
           >
             <span className="text-base leading-none">+</span> Add season
+          </button>
+        )}
+      </Card>
+
+      {/* Discount periods */}
+      <Card title="Discount Periods" className="mt-5">
+        <p className="font-sans text-xs text-dark/40 mb-4">
+          Discounts apply a percentage off the total (accommodation + cleaning fee). Shown to guests as a crossed-out price on the booking page.
+        </p>
+
+        {(pricing.discountPeriods || []).length === 0 && (
+          <p className="font-sans text-xs text-dark/30 italic mb-4">No discount periods configured.</p>
+        )}
+
+        <div className="space-y-2 mb-4">
+          {(pricing.discountPeriods || []).map((discount) => {
+            const id = discount.id || discount.name;
+            const isEditing = editingDiscountId === id;
+
+            if (isEditing) {
+              return (
+                <div key={id} className="border border-amber-200 rounded-lg p-4 space-y-3 bg-amber-50/50">
+                  <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-dark/40">Editing Discount</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <InlineField label="Name" value={editDiscountDraft.name || ""} onChange={(v) => setEditDiscountDraft((d) => ({ ...d, name: v }))} className="col-span-2" placeholder="e.g. Spring Offer" />
+                    <InlineField label="Start date" type="date" value={editDiscountDraft.startDate || ""} onChange={(v) => setEditDiscountDraft((d) => ({ ...d, startDate: v }))} />
+                    <InlineField label="End date" type="date" value={editDiscountDraft.endDate || ""} onChange={(v) => setEditDiscountDraft((d) => ({ ...d, endDate: v }))} />
+                    <InlineField label="Discount %" type="number" value={editDiscountDraft.discountPercent ? String(editDiscountDraft.discountPercent) : ""} onChange={(v) => setEditDiscountDraft((d) => ({ ...d, discountPercent: parseFloat(v) }))} placeholder="e.g. 15" className="col-span-2" />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={saveEditDiscount} className="px-4 py-2 rounded-lg bg-moss text-light-text font-sans text-xs font-medium hover:bg-moss-light transition-colors">Save changes</button>
+                    <button onClick={() => { setEditingDiscountId(null); setEditDiscountDraft({}); }} className="px-4 py-2 rounded-lg border border-dark/10 text-dark/50 font-sans text-xs hover:border-dark/20 transition-colors">Cancel</button>
+                    <button onClick={() => { setEditingDiscountId(null); deleteDiscount(id); }} className="ml-auto px-4 py-2 rounded-lg text-red-400 font-sans text-xs hover:text-red-600 transition-colors">Delete</button>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div key={id} className="flex items-center justify-between p-3 rounded-lg bg-amber-50/60 border border-amber-200/60 hover:border-amber-300/60 transition-colors">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[9px] tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">{discount.discountPercent}% off</span>
+                    <span className="font-sans text-sm text-dark font-medium">{discount.name}</span>
+                  </div>
+                  <div className="font-mono text-[10px] text-dark/35 mt-0.5">{discount.startDate} → {discount.endDate}</div>
+                </div>
+                <button onClick={() => startEditDiscount(discount)} className="text-dark/30 hover:text-moss transition-colors font-sans text-xs px-2 py-1">Edit</button>
+              </div>
+            );
+          })}
+        </div>
+
+        {showAddDiscount ? (
+          <div className="border border-dark/8 rounded-lg p-4 space-y-3">
+            <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-dark/40">New Discount Period</p>
+            <div className="grid grid-cols-2 gap-3">
+              <InlineField label="Name" value={newDiscount.name || ""} onChange={(v) => setNewDiscount((s) => ({ ...s, name: v }))} placeholder="e.g. Early Bird Spring" className="col-span-2" />
+              <InlineField label="Start date" type="date" value={newDiscount.startDate || ""} onChange={(v) => setNewDiscount((s) => ({ ...s, startDate: v }))} />
+              <InlineField label="End date" type="date" value={newDiscount.endDate || ""} onChange={(v) => setNewDiscount((s) => ({ ...s, endDate: v }))} />
+              <InlineField label="Discount %" type="number" value={newDiscount.discountPercent ? String(newDiscount.discountPercent) : ""} onChange={(v) => setNewDiscount((s) => ({ ...s, discountPercent: parseFloat(v) }))} placeholder="e.g. 10" className="col-span-2" />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={addDiscount} className="px-4 py-2 rounded-lg bg-moss text-light-text font-sans text-xs font-medium hover:bg-moss-light transition-colors">Add Discount</button>
+              <button onClick={() => { setShowAddDiscount(false); setNewDiscount({}); }} className="px-4 py-2 rounded-lg border border-dark/10 text-dark/50 font-sans text-xs hover:border-dark/20 transition-colors">Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setShowAddDiscount(true)} className="flex items-center gap-2 text-moss font-sans text-xs font-medium hover:text-moss-light transition-colors">
+            <span className="text-base leading-none">+</span> Add discount period
           </button>
         )}
       </Card>
