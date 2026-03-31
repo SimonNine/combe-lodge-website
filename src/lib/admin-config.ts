@@ -6,6 +6,7 @@ export interface SiteSettings {
   checkInInstructions: string;
   contactPhone: string;
   contactEmail: string;
+  whatHappensNext: string[];
 }
 
 export interface AdminConfig {
@@ -22,6 +23,11 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
     "Check-in is from 4pm. You'll receive a code for the key safe by email the day before arrival.",
   contactPhone: "",
   contactEmail: "",
+  whatHappensNext: [
+    "Check your email for full check-in details, directions and the lodge access code.",
+    "Check-in is from 4pm. Check-out by 10am.",
+    "The Kentisbury Grange restaurant is on-site and available for dinner reservations — we recommend booking ahead.",
+  ],
 };
 
 const DEFAULT_CONFIG: AdminConfig = {
@@ -52,6 +58,7 @@ export async function getAdminConfig(): Promise<AdminConfig> {
       // Backfill any fields added after initial save
       if (!config.pricing.discountPeriods) config.pricing.discountPeriods = [];
       if (!config.bookingSources) config.bookingSources = ["Direct", "Kentisbury Grange", "Luxury Coastal"];
+      if (!config.siteSettings.whatHappensNext) config.siteSettings.whatHappensNext = DEFAULT_SITE_SETTINGS.whatHappensNext;
       return config;
     }
   } catch {

@@ -119,6 +119,50 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      {/* What happens next */}
+      <Card title="What Happens Next" className="mt-5">
+        <p className="font-sans text-xs text-dark/40 mb-4">
+          Steps shown to guests on the booking confirmation page. Drag to reorder — edit each step inline.
+        </p>
+        <div className="space-y-2 mb-3">
+          {(settings.whatHappensNext || []).map((step, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <div className="w-5 h-5 rounded-full bg-sage/15 flex items-center justify-center flex-shrink-0 mt-2">
+                <span className="font-mono text-[9px] text-moss">{i + 1}</span>
+              </div>
+              <textarea
+                value={step}
+                rows={2}
+                onChange={(e) => {
+                  const steps = [...(settings.whatHappensNext || [])];
+                  steps[i] = e.target.value;
+                  updateSettings({ ...settings, whatHappensNext: steps });
+                }}
+                className="flex-1 px-3 py-2 rounded-lg border border-dark/10 font-sans text-sm text-dark focus:outline-none focus:border-sage transition-colors resize-none"
+              />
+              <button
+                onClick={() => {
+                  const steps = (settings.whatHappensNext || []).filter((_, j) => j !== i);
+                  updateSettings({ ...settings, whatHappensNext: steps });
+                }}
+                className="text-red-400 hover:text-red-600 transition-colors mt-2 flex-shrink-0"
+                title="Remove step"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M3.5 3.5L10.5 10.5M10.5 3.5L3.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => updateSettings({ ...settings, whatHappensNext: [...(settings.whatHappensNext || []), ""] })}
+          className="flex items-center gap-2 text-moss font-sans text-xs font-medium hover:text-moss-light transition-colors"
+        >
+          <span className="text-base leading-none">+</span> Add step
+        </button>
+      </Card>
+
       {/* Booking sources */}
       <Card title="Booking Sources" className="mt-5">
         <p className="font-sans text-xs text-dark/40 mb-4">

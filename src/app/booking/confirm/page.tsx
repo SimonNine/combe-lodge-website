@@ -1,4 +1,5 @@
 import { stripe } from "@/lib/stripe";
+import { getAdminConfig } from "@/lib/admin-config";
 import Link from "next/link";
 import Navigation from "@/components/ui/Navigation";
 
@@ -26,6 +27,15 @@ export default async function ConfirmPage({ searchParams }: Props) {
 
   const meta = session.metadata;
   if (!meta) return <ErrorState message="Booking details unavailable." />;
+
+  const config = await getAdminConfig();
+  const whatHappensNext = config.siteSettings.whatHappensNext?.length
+    ? config.siteSettings.whatHappensNext
+    : [
+        "Check your email for full check-in details, directions and the lodge access code.",
+        "Check-in is from 4pm. Check-out by 10am.",
+        "The Kentisbury Grange restaurant is on-site and available for dinner reservations — we recommend booking ahead.",
+      ];
 
   const checkIn = new Date(meta.checkIn + "T12:00:00");
   const checkOut = new Date(meta.checkOut + "T12:00:00");
@@ -92,18 +102,9 @@ export default async function ConfirmPage({ searchParams }: Props) {
           <div className="mt-8 space-y-4">
             <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-dark/30">What happens next</p>
             <div className="space-y-3">
-              <NextStep
-                number="1"
-                text="Check your email for full check-in details, directions and the lodge access code."
-              />
-              <NextStep
-                number="2"
-                text={`Check-in is from 4pm on ${checkIn.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}. Check-out by 10am.`}
-              />
-              <NextStep
-                number="3"
-                text="The Kentisbury Grange restaurant is on-site and available for dinner reservations — we recommend booking ahead."
-              />
+              {whatHappensNext.map((step, i) => (
+                <NextStep key={i} number={String(i + 1)} text={step} />
+              ))}
             </div>
           </div>
 
