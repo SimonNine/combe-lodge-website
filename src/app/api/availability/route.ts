@@ -21,7 +21,7 @@ export async function GET() {
   try {
     const [ranges, config] = await Promise.all([
       getBookedDateRanges(),
-      Promise.resolve(getAdminConfig()),
+      getAdminConfig(),
     ]);
 
     const bookedFromDB: string[] = [];

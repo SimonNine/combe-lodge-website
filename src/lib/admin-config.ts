@@ -1,9 +1,5 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { join } from "path";
+import { sql } from "@vercel/postgres";
 import { DEFAULT_RULES, DEFAULT_PRICING, BookingRules, PricingConfig } from "./booking-rules";
-
-const DATA_DIR = join(process.cwd(), "data");
-const CONFIG_FILE = join(DATA_DIR, "admin-config.json");
 
 export interface SiteSettings {
   tagline: string;
@@ -28,35 +24,46 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   contactEmail: "",
 };
 
-export function getAdminConfig(): AdminConfig {
+const DEFAULT_CONFIG: AdminConfig = {
+  pricing: DEFAULT_PRICING,
+  rules: DEFAULT_RULES,
+  blackoutDates: [],
+  siteSettings: DEFAULT_SITE_SETTINGS,
+  bookingSources: ["Direct", "Kentisbury Grange", "Luxury Coastal"],
+};
+
+export async function createConfigTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS site_config (
+      key TEXT PRIMARY KEY,
+      value JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+}
+
+export async function getAdminConfig(): Promise<AdminConfig> {
   try {
-    if (existsSync(CONFIG_FILE)) {
-      const raw = readFileSync(CONFIG_FILE, "utf-8");
-      const config = JSON.parse(raw) as AdminConfig;
-      // Ensure new fields have defaults for existing configs
-      if (!config.pricing.discountPeriods) {
-        config.pricing.discountPeriods = [];
-      }
-      if (!config.bookingSources) {
-        config.bookingSources = ["Direct", "Kentisbury Grange", "Luxury Coastal"];
-      }
+    const result = await sql<{ value: AdminConfig }>`
+      SELECT value FROM site_config WHERE key = 'default'
+    `;
+    if (result.rows.length > 0) {
+      const config = result.rows[0].value;
+      // Backfill any fields added after initial save
+      if (!config.pricing.discountPeriods) config.pricing.discountPeriods = [];
+      if (!config.bookingSources) config.bookingSources = ["Direct", "Kentisbury Grange", "Luxury Coastal"];
       return config;
     }
   } catch {
-    // Fall through to defaults
+    // Table may not exist yet — return defaults
   }
-  return {
-    pricing: DEFAULT_PRICING,
-    rules: DEFAULT_RULES,
-    blackoutDates: [],
-    siteSettings: DEFAULT_SITE_SETTINGS,
-    bookingSources: ["Direct", "Kentisbury Grange", "Luxury Coastal"],
-  };
+  return { ...DEFAULT_CONFIG };
 }
 
-export function saveAdminConfig(config: AdminConfig): void {
-  if (!existsSync(DATA_DIR)) {
-    mkdirSync(DATA_DIR, { recursive: true });
-  }
-  writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), "utf-8");
+export async function saveAdminConfig(config: AdminConfig): Promise<void> {
+  await sql`
+    INSERT INTO site_config (key, value, updated_at)
+    VALUES ('default', ${JSON.stringify(config)}::jsonb, NOW())
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+  `;
 }
