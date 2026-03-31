@@ -177,7 +177,7 @@ export default function PricingPage() {
   }
 
   return (
-    <div className="p-8 max-w-2xl">
+    <div className="p-4 md:p-8 max-w-2xl">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="font-serif text-2xl text-dark">Pricing</h1>

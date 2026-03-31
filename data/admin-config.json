@@ -1,6 +1,6 @@
 {
   "pricing": {
-    "baseNightlyRate": 25000,
+    "baseNightlyRate": 30000,
     "cleaningFee": 8000,
     "weekendPremiumPercent": 0,
     "depositPercent": 100,
@@ -24,13 +24,6 @@
         "endDate": "2027-01-03",
         "nightlyRate": 40000,
         "minNights": 3
-      },
-      {
-        "id": "1774983024459",
-        "name": "Tester",
-        "startDate": "2026-03-31",
-        "endDate": "2026-04-05",
-        "nightlyRate": 200000
       }
     ],
     "discountPeriods": []
@@ -44,9 +37,17 @@
   },
   "blackoutDates": [],
   "siteSettings": {
-    "tagline": "A shelter in the valley",
+    "tagline": "Your next retreat",
     "checkInInstructions": "Check-in is from 4pm. Head up to reception on arrival to pick up your key and information on the lodge. We hope you enjoy your stay!",
     "contactPhone": "",
     "contactEmail": ""
-  }
+  },
+  "bookingSources": [
+    "Direct",
+    "Kentisbury Grange",
+    "Luxury Coastal",
+    "Referral",
+    "Friends & Family",
+    "Simon & Lydia"
+  ]
 }

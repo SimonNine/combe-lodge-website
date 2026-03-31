@@ -1,11 +1,19 @@
 "use client";
 
 import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 
 export default function Hero() {
   const ref = useRef(null);
+  const [tagline, setTagline] = useState("A shelter in the valley");
+
+  useEffect(() => {
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((d) => { if (d.siteSettings?.tagline) setTagline(d.siteSettings.tagline); })
+      .catch(() => {});
+  }, []);
 
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -69,7 +77,7 @@ export default function Hero() {
           transition={{ duration: 0.8, delay: 1.0 }}
           className="font-sans font-light text-light-text/60 text-base md:text-lg max-w-md mt-4 tracking-wide"
         >
-          A shelter in the valley
+          {tagline}
         </motion.p>
 
         <motion.div

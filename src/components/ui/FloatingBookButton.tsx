@@ -24,6 +24,7 @@ export default function FloatingBookButton() {
   const [error, setError] = useState<string | null>(null);
   const [adminPricing, setAdminPricing] = useState<PricingConfig>(DEFAULT_PRICING);
   const [adminRules, setAdminRules] = useState<BookingRules>(DEFAULT_RULES);
+  const [bookedDates, setBookedDates] = useState<string[]>([]);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -33,6 +34,12 @@ export default function FloatingBookButton() {
       .then((d) => {
         if (d.pricing) setAdminPricing(d.pricing);
         if (d.rules) setAdminRules(d.rules);
+      })
+      .catch(() => {});
+    fetch("/api/availability")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.bookedDates) setBookedDates(d.bookedDates);
       })
       .catch(() => {});
   }, []);
@@ -59,7 +66,7 @@ export default function FloatingBookButton() {
         setCheckOut(null);
       } else {
         const validation = validateBooking(
-          checkIn, date, adminRules, adminPricing, []
+          checkIn, date, adminRules, adminPricing, bookedDates
         );
         if (!validation.valid) {
           setError(validation.error || "Invalid dates");
@@ -70,10 +77,17 @@ export default function FloatingBookButton() {
     }
   };
 
+  const toLocalDateString = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
   const handleBook = () => {
     const params = new URLSearchParams();
-    if (checkIn) params.set("checkIn", checkIn.toISOString().split("T")[0]);
-    if (checkOut) params.set("checkOut", checkOut.toISOString().split("T")[0]);
+    if (checkIn) params.set("checkIn", toLocalDateString(checkIn));
+    if (checkOut) params.set("checkOut", toLocalDateString(checkOut));
     params.set("adults", adults.toString());
     params.set("children", children.toString());
     router.push(`/booking?${params.toString()}`);
@@ -165,7 +179,7 @@ export default function FloatingBookButton() {
                 checkIn={checkIn}
                 checkOut={checkOut}
                 onSelectDate={handleSelectDate}
-                bookedDates={[]}
+                bookedDates={bookedDates}
               />
 
               {/* Error */}

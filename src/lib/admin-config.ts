@@ -17,6 +17,7 @@ export interface AdminConfig {
   rules: BookingRules;
   blackoutDates: string[]; // YYYY-MM-DD strings
   siteSettings: SiteSettings;
+  bookingSources: string[];
 }
 
 const DEFAULT_SITE_SETTINGS: SiteSettings = {
@@ -36,6 +37,9 @@ export function getAdminConfig(): AdminConfig {
       if (!config.pricing.discountPeriods) {
         config.pricing.discountPeriods = [];
       }
+      if (!config.bookingSources) {
+        config.bookingSources = ["Direct", "Kentisbury Grange", "Luxury Coastal"];
+      }
       return config;
     }
   } catch {
@@ -46,6 +50,7 @@ export function getAdminConfig(): AdminConfig {
     rules: DEFAULT_RULES,
     blackoutDates: [],
     siteSettings: DEFAULT_SITE_SETTINGS,
+    bookingSources: ["Direct", "Kentisbury Grange", "Luxury Coastal"],
   };
 }
 

@@ -9,12 +9,18 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [bookingSources, setBookingSources] = useState<string[]>([]);
+  const [sourcesSaveState, setSourcesSaveState] = useState<SaveState>("idle");
+  const [newSource, setNewSource] = useState("");
   const { setDirty } = useUnsavedChanges();
 
   useEffect(() => {
     fetch("/api/admin/config")
       .then((r) => r.json())
-      .then((d) => setSettings(d.siteSettings));
+      .then((d) => {
+        setSettings(d.siteSettings);
+        if (d.bookingSources) setBookingSources(d.bookingSources);
+      });
   }, []);
 
   const updateSettings = (updated: SiteSettings) => { setSettings(updated); setDirty(true); };
@@ -32,12 +38,39 @@ export default function SettingsPage() {
     setTimeout(() => setSaveState("idle"), 2500);
   };
 
+  const saveSources = async (sources: string[]) => {
+    setSourcesSaveState("saving");
+    const res = await fetch("/api/admin/config", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bookingSources: sources }),
+    });
+    setSourcesSaveState(res.ok ? "saved" : "error");
+    setTimeout(() => setSourcesSaveState("idle"), 2500);
+  };
+
+  const addSource = () => {
+    const trimmed = newSource.trim();
+    if (!trimmed || bookingSources.includes(trimmed)) return;
+    const updated = [...bookingSources, trimmed];
+    setBookingSources(updated);
+    setNewSource("");
+    saveSources(updated);
+  };
+
+  const removeSource = (source: string) => {
+    if (bookingSources.length <= 1) return;
+    const updated = bookingSources.filter((s) => s !== source);
+    setBookingSources(updated);
+    saveSources(updated);
+  };
+
   if (!settings) {
     return <div className="p-10 text-dark/30 font-sans text-sm">Loading…</div>;
   }
 
   return (
-    <div className="p-8 max-w-2xl">
+    <div className="p-4 md:p-8 max-w-2xl">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="font-serif text-2xl text-dark">Settings</h1>
@@ -84,6 +117,57 @@ export default function SettingsPage() {
             placeholder="hello@combelodge.co.uk"
           />
         </div>
+      </Card>
+
+      {/* Booking sources */}
+      <Card title="Booking Sources" className="mt-5">
+        <p className="font-sans text-xs text-dark/40 mb-4">
+          Sources available when adding manual bookings. Used for reporting and tracking.
+        </p>
+        <div className="space-y-2 mb-4">
+          {bookingSources.map((source) => (
+            <div
+              key={source}
+              className="flex items-center justify-between px-3 py-2 rounded-lg border border-dark/8 bg-stone/30"
+            >
+              <span className="font-sans text-sm text-dark">{source}</span>
+              {bookingSources.length > 1 && (
+                <button
+                  onClick={() => removeSource(source)}
+                  className="text-red-400 hover:text-red-600 transition-colors ml-2"
+                  title="Remove source"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M3.5 3.5L10.5 10.5M10.5 3.5L3.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newSource}
+            onChange={(e) => setNewSource(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addSource()}
+            placeholder="New source name"
+            className="flex-1 px-3 py-2 rounded-lg border border-dark/10 font-sans text-sm text-dark focus:outline-none focus:border-sage transition-colors"
+          />
+          <button
+            onClick={addSource}
+            disabled={!newSource.trim()}
+            className="px-4 py-2 rounded-lg font-sans font-medium text-sm bg-moss text-light-text hover:bg-moss-light transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Add
+          </button>
+        </div>
+        {sourcesSaveState === "saved" && (
+          <p className="font-sans text-[10px] text-sage mt-2">Sources saved.</p>
+        )}
+        {sourcesSaveState === "error" && (
+          <p className="font-sans text-[10px] text-red-500 mt-2">Failed to save sources.</p>
+        )}
       </Card>
 
       {/* Future integrations */}

@@ -42,6 +42,7 @@ function BookingPageInner() {
   // Admin config — loaded on mount so pricing/rules stay in sync with admin settings
   const [adminPricing, setAdminPricing] = useState<PricingConfig>(DEFAULT_PRICING);
   const [adminRules, setAdminRules] = useState<BookingRules>(DEFAULT_RULES);
+  const [bookedDates, setBookedDates] = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/config")
@@ -49,6 +50,12 @@ function BookingPageInner() {
       .then((d) => {
         if (d.pricing) setAdminPricing(d.pricing);
         if (d.rules) setAdminRules(d.rules);
+      })
+      .catch(() => {});
+    fetch("/api/availability")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.bookedDates) setBookedDates(d.bookedDates);
       })
       .catch(() => {});
   }, []);
@@ -78,7 +85,6 @@ function BookingPageInner() {
     }
   }, [searchParams]);
 
-  const bookedDates: string[] = [];
   const totalGuests = adults + children;
 
   const handleSelectDate = (date: Date) => {
