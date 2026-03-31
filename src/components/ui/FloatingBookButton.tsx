@@ -25,8 +25,21 @@ export default function FloatingBookButton() {
   const [adminPricing, setAdminPricing] = useState<PricingConfig>(DEFAULT_PRICING);
   const [adminRules, setAdminRules] = useState<BookingRules>(DEFAULT_RULES);
   const [bookedDates, setBookedDates] = useState<string[]>([]);
+  const [heroVisible, setHeroVisible] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+
+  // Watch the hero section — on mobile, hide button while hero is still in view
+  useEffect(() => {
+    const hero = document.querySelector("section");
+    if (!hero) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setHeroVisible(entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     fetch("/api/config")
@@ -96,7 +109,28 @@ export default function FloatingBookButton() {
 
   return (
     <>
-      {/* Floating button */}
+      {/* Mobile: full-width bottom bar — hidden until hero scrolls out of view */}
+      <AnimatePresence>
+        {!isOpen && !heroVisible && (
+          <motion.button
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ duration: 0.3, ease: [0.33, 1, 0.68, 1] }}
+            onClick={() => setIsOpen(true)}
+            className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-center gap-2 py-4 px-6 bg-moss text-light-text font-sans font-medium text-sm tracking-wide shadow-2xl shadow-moss/30 cursor-pointer"
+            style={{ borderRadius: "10px 10px 0 0" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M5 2V4.5M11 2V4.5M2 7H14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+            Book Your Stay
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop: floating pill — always visible when not on booking page */}
       <AnimatePresence>
         {!isOpen && (
           <motion.button
@@ -105,7 +139,7 @@ export default function FloatingBookButton() {
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             transition={{ duration: 0.3, ease: [0.33, 1, 0.68, 1] }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-5 py-3 rounded-full bg-moss text-light-text font-sans font-medium text-sm tracking-wide shadow-xl shadow-moss/30 hover:bg-moss-light hover:shadow-2xl hover:shadow-moss/40 transition-all duration-300 cursor-pointer"
+            className="hidden md:flex fixed bottom-6 right-6 z-40 items-center gap-2 px-5 py-3 rounded-full bg-moss text-light-text font-sans font-medium text-sm tracking-wide shadow-xl shadow-moss/30 hover:bg-moss-light hover:shadow-2xl hover:shadow-moss/40 transition-all duration-300 cursor-pointer"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
