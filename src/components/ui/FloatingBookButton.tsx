@@ -172,16 +172,17 @@ export default function FloatingBookButton() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
             transition={{ duration: 0.3, ease: [0.33, 1, 0.68, 1] }}
-            className="fixed bottom-6 right-6 z-50 w-[360px] max-h-[calc(100vh-48px)] overflow-y-auto bg-white rounded-[14px] shadow-2xl border border-dark/5"
+            className="fixed inset-0 md:inset-auto md:bottom-6 md:right-6 z-50 md:w-[360px] md:max-h-[calc(100vh-48px)] overflow-y-auto bg-white md:rounded-[14px] shadow-2xl border border-dark/5"
+            style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-dark/5">
               <h3 className="font-serif text-base text-dark">Book Your Stay</h3>
               <button
                 onClick={() => setIsOpen(false)}
-                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-stone transition-colors text-dark/40 hover:text-dark/60"
+                className="w-9 h-9 md:w-7 md:h-7 flex items-center justify-center rounded-lg hover:bg-stone transition-colors text-dark/40 hover:text-dark/60"
               >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
                   <path d="M3.5 3.5L10.5 10.5M10.5 3.5L3.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
               </button>

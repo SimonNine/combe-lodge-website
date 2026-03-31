@@ -24,6 +24,12 @@ const spaceGrotesk = Space_Grotesk({
   display: "swap",
 });
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   title: "Combe Lodge | A Shelter in the Valley",
   description:
