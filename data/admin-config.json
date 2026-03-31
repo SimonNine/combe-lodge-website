@@ -1,0 +1,51 @@
+{
+  "pricing": {
+    "baseNightlyRate": 25000,
+    "cleaningFee": 8000,
+    "weekendPremiumPercent": 0,
+    "depositPercent": 100,
+    "seasonalPricing": [
+      {
+        "name": "Peak Summer",
+        "startDate": "2026-07-01",
+        "endDate": "2026-09-01",
+        "nightlyRate": 35000,
+        "minNights": 3
+      },
+      {
+        "name": "Off-peak Winter",
+        "startDate": "2026-11-01",
+        "endDate": "2027-03-14",
+        "nightlyRate": 19500
+      },
+      {
+        "name": "Christmas & New Year",
+        "startDate": "2026-12-20",
+        "endDate": "2027-01-03",
+        "nightlyRate": 40000,
+        "minNights": 3
+      },
+      {
+        "id": "1774983024459",
+        "name": "Tester",
+        "startDate": "2026-04-01",
+        "endDate": "2026-04-05",
+        "nightlyRate": 200000
+      }
+    ]
+  },
+  "rules": {
+    "minNights": 2,
+    "weekendRule": true,
+    "checkInTime": "16:00",
+    "checkOutTime": "10:00",
+    "maxGuests": 4
+  },
+  "blackoutDates": [],
+  "siteSettings": {
+    "tagline": "A shelter in the valley",
+    "checkInInstructions": "Check-in is from 4pm. Head up to reception on arrival to pick up your key and information on the lodge. We hope you enjoy your stay!",
+    "contactPhone": "",
+    "contactEmail": ""
+  }
+}
