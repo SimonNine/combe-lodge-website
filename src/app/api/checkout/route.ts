@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { calculatePrice, DEFAULT_PRICING } from "@/lib/booking-rules";
+import { calculatePrice } from "@/lib/booking-rules";
+import { getAdminConfig } from "@/lib/admin-config";
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,9 +12,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const config = await getAdminConfig();
     const checkInDate = new Date(checkIn);
     const checkOutDate = new Date(checkOut);
-    const pricing = calculatePrice(checkInDate, checkOutDate, DEFAULT_PRICING);
+    const pricing = calculatePrice(checkInDate, checkOutDate, config.pricing);
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
