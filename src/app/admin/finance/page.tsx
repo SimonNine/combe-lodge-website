@@ -1,6 +1,88 @@
 "use client";
 
-import { useState, useEffect, useMemo, Fragment } from "react";
+import { useState, useEffect, useMemo, Fragment, useRef } from "react";
+
+function MultiSelect({ options, selected, onChange, placeholder }: {
+  options: string[];
+  selected: string[];
+  onChange: (v: string[]) => void;
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (btnRef.current && !btnRef.current.closest("[data-multiselect]")?.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleOpen = () => {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
+    setOpen((o) => !o);
+  };
+
+  const toggle = (v: string) =>
+    onChange(selected.includes(v) ? selected.filter((s) => s !== v) : [...selected, v]);
+
+  const label =
+    selected.length === 0 ? placeholder
+    : selected.length === 1 ? selected[0]
+    : `${selected.length} selected`;
+
+  return (
+    <div data-multiselect="true">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={handleOpen}
+        className={`px-3 py-2 rounded-lg border font-sans text-sm text-dark focus:outline-none transition-colors bg-white flex items-center gap-2 whitespace-nowrap ${selected.length > 0 ? "border-sage" : "border-dark/10"}`}
+      >
+        {label}
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor" className="opacity-40 flex-shrink-0">
+          <path d="M0 0l5 6 5-6z" />
+        </svg>
+      </button>
+      {open && (
+        <div
+          style={{ position: "fixed", top: pos.top, left: pos.left, minWidth: Math.max(pos.width, 180) }}
+          className="bg-white rounded-xl border border-dark/10 shadow-xl z-[100] py-1.5"
+        >
+          {options.map((opt) => (
+            <label key={opt} className="flex items-center gap-2.5 px-3 py-2 hover:bg-stone/40 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selected.includes(opt)}
+                onChange={() => toggle(opt)}
+                className="accent-moss"
+              />
+              <span className="font-sans text-sm text-dark">{opt}</span>
+            </label>
+          ))}
+          {selected.length > 0 && (
+            <div className="border-t border-dark/6 mt-1 pt-1 px-3 pb-1">
+              <button
+                type="button"
+                onClick={() => onChange([])}
+                className="font-sans text-xs text-dark/40 hover:text-dark/70 transition-colors"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Booking {
   id: string;
@@ -66,8 +148,8 @@ export default function FinancePage() {
   const [filterYear, setFilterYear] = useState("All");
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
-  const [filterSource, setFilterSource] = useState("All");
-  const [filterStatus, setFilterStatus] = useState("All");
+  const [filterSources, setFilterSources] = useState<string[]>([]);
+  const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
 
   // Sort
   const [sortKey, setSortKey] = useState<SortKey>("check_in");
@@ -100,10 +182,10 @@ export default function FinancePage() {
 
   const handleClearFilters = () => {
     setSearch(""); setFilterYear("All"); setFilterFrom(""); setFilterTo("");
-    setFilterSource("All"); setFilterStatus("All");
+    setFilterSources([]); setFilterStatuses([]);
   };
 
-  const hasFilters = search || filterYear !== "All" || filterFrom || filterTo || filterSource !== "All" || filterStatus !== "All";
+  const hasFilters = search || filterYear !== "All" || filterFrom || filterTo || filterSources.length > 0 || filterStatuses.length > 0;
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -119,8 +201,8 @@ export default function FinancePage() {
       if (filterYear !== "All" && year !== filterYear) return false;
       if (filterFrom && checkInVal < filterFrom) return false;
       if (filterTo && checkInVal > filterTo) return false;
-      if (filterSource !== "All" && b.source !== filterSource) return false;
-      if (filterStatus !== "All" && b.status !== filterStatus) return false;
+      if (filterSources.length > 0 && !filterSources.includes(b.source)) return false;
+      if (filterStatuses.length > 0 && !filterStatuses.includes(b.status)) return false;
       if (q) {
         const amountStr = b.total_amount > 0 ? `£${(b.total_amount / 100).toFixed(0)}` : "";
         return [b.guest_name, b.guest_email, b.source, b.check_in, b.check_out, b.status, amountStr]
@@ -128,7 +210,7 @@ export default function FinancePage() {
       }
       return true;
     });
-  }, [bookings, search, filterYear, filterFrom, filterTo, filterSource, filterStatus]);
+  }, [bookings, search, filterYear, filterFrom, filterTo, filterSources, filterStatuses]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -225,17 +307,19 @@ export default function FinancePage() {
             <input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} className={selectClass} />
           </div>
           {/* Source */}
-          <select value={filterSource} onChange={(e) => setFilterSource(e.target.value)} className={selectClass}>
-            <option value="All">All sources</option>
-            {bookingSources.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+          <MultiSelect
+            options={bookingSources}
+            selected={filterSources}
+            onChange={setFilterSources}
+            placeholder="All sources"
+          />
           {/* Status */}
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={selectClass}>
-            <option value="All">All statuses</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="pending">Pending</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+          <MultiSelect
+            options={["confirmed", "pending", "cancelled"]}
+            selected={filterStatuses}
+            onChange={setFilterStatuses}
+            placeholder="All statuses"
+          />
         </div>
         <div className="flex items-center gap-2">
           <input
