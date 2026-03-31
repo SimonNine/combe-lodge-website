@@ -26,14 +26,23 @@ export default function Navigation({ light = false }: { light?: boolean }) {
   const linkColor = light ? "text-dark/55 hover:text-dark" : "text-light-text/70 hover:text-light-text";
   const hamburgerColor = light ? "bg-dark" : "bg-light-text";
 
+  // Opaque colour that always blocks content showing through the iOS status bar area
+  const safeAreaBg = light ? "rgba(255,255,255,1)" : "rgba(10,26,18,1)";
+
   return (
     <>
+      {/* Permanently opaque safe-area fill — prevents page content bleeding into the status bar */}
+      <div
+        className="fixed top-0 left-0 right-0 z-50"
+        style={{ height: "env(safe-area-inset-top, 0px)", background: safeAreaBg }}
+      />
+
       <motion.nav
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.5 }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${navBg}`}
-        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+        className={`fixed left-0 right-0 z-50 transition-all duration-500 ${navBg}`}
+        style={{ top: "env(safe-area-inset-top, 0px)" }}
       >
         <div className="max-w-7xl mx-auto px-6 md:px-10">
           <div className="flex items-center justify-between h-16 md:h-20">
