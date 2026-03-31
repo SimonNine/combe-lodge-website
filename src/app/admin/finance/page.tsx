@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 
 interface Booking {
   id: string;
@@ -35,6 +35,8 @@ const toDateValue = (s: string) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
+const toDateInput = toDateValue;
+
 function sourceBadgeClass(source: string): string {
   switch (source) {
     case "Direct": return "bg-sage/20 text-dark";
@@ -57,13 +59,19 @@ export default function FinancePage() {
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [bookingSources, setBookingSources] = useState<string[]>(["Direct", "Kentisbury Grange", "Luxury Coastal"]);
-  const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("check_in");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+
+  // Filters
+  const [search, setSearch] = useState("");
+  const [filterYear, setFilterYear] = useState("All");
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
   const [filterSource, setFilterSource] = useState("All");
+  const [filterStatus, setFilterStatus] = useState("All");
+
+  // Sort
+  const [sortKey, setSortKey] = useState<SortKey>("check_in");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const fetchBookings = () => {
     fetch("/api/bookings")
@@ -77,58 +85,50 @@ export default function FinancePage() {
 
   useEffect(() => {
     fetchBookings();
-
     fetch("/api/admin/config")
       .then((r) => r.json())
       .then((d) => { if (d.bookingSources) setBookingSources(d.bookingSources); })
       .catch(() => {});
   }, []);
 
+  // Derive available years
+  const availableYears = useMemo(() => {
+    if (!bookings) return [];
+    const years = new Set(bookings.map((b) => String(toLocalNoon(b.check_in).getFullYear())));
+    return Array.from(years).sort((a, b) => Number(b) - Number(a));
+  }, [bookings]);
+
   const handleClearFilters = () => {
-    setSearch("");
-    setFilterFrom("");
-    setFilterTo("");
-    setFilterSource("All");
+    setSearch(""); setFilterYear("All"); setFilterFrom(""); setFilterTo("");
+    setFilterSource("All"); setFilterStatus("All");
   };
+
+  const hasFilters = search || filterYear !== "All" || filterFrom || filterTo || filterSource !== "All" || filterStatus !== "All";
 
   const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir("asc"); }
   };
 
-  // Filter: confirmed only for revenue, but show all in table
   const filtered = useMemo(() => {
     if (!bookings) return [];
     const q = search.toLowerCase();
     return bookings.filter((b) => {
-      // Date range filter on check_in
-      if (filterFrom) {
-        const checkInVal = toDateValue(b.check_in);
-        if (checkInVal < filterFrom) return false;
-      }
-      if (filterTo) {
-        const checkInVal = toDateValue(b.check_in);
-        if (checkInVal > filterTo) return false;
-      }
-      // Source filter
+      const checkInVal = toDateValue(b.check_in);
+      const year = String(toLocalNoon(b.check_in).getFullYear());
+      if (filterYear !== "All" && year !== filterYear) return false;
+      if (filterFrom && checkInVal < filterFrom) return false;
+      if (filterTo && checkInVal > filterTo) return false;
       if (filterSource !== "All" && b.source !== filterSource) return false;
-      // Search
+      if (filterStatus !== "All" && b.status !== filterStatus) return false;
       if (q) {
         const amountStr = b.total_amount > 0 ? `£${(b.total_amount / 100).toFixed(0)}` : "";
-        const matches = [
-          b.guest_name, b.guest_email,
-          b.source, b.check_in, b.check_out,
-          b.status, amountStr,
-        ].some((v) => (v || "").toLowerCase().includes(q));
-        if (!matches) return false;
+        return [b.guest_name, b.guest_email, b.source, b.check_in, b.check_out, b.status, amountStr]
+          .some((v) => (v || "").toLowerCase().includes(q));
       }
       return true;
     });
-  }, [bookings, search, filterFrom, filterTo, filterSource]);
+  }, [bookings, search, filterYear, filterFrom, filterTo, filterSource, filterStatus]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -137,8 +137,7 @@ export default function FinancePage() {
         av = toLocalNoon(a[sortKey]).getTime();
         bv = toLocalNoon(b[sortKey]).getTime();
       } else if (sortKey === "nights" || sortKey === "total_amount") {
-        av = a[sortKey];
-        bv = b[sortKey];
+        av = a[sortKey]; bv = b[sortKey];
       } else {
         av = (a[sortKey] || "").toLowerCase();
         bv = (b[sortKey] || "").toLowerCase();
@@ -149,35 +148,39 @@ export default function FinancePage() {
     });
   }, [filtered, sortKey, sortDir]);
 
-  const confirmedFiltered = useMemo(
-    () => filtered.filter((b) => b.status === "confirmed"),
-    [filtered]
-  );
-  const confirmedWithAmount = useMemo(
-    () => confirmedFiltered.filter((b) => b.total_amount > 0),
-    [confirmedFiltered]
-  );
+  // Group by month
+  const grouped = useMemo(() => {
+    const groups: { key: string; label: string; items: Booking[] }[] = [];
+    for (const b of sorted) {
+      const d = toLocalNoon(b.check_in);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = d.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+      const last = groups[groups.length - 1];
+      if (last && last.key === key) last.items.push(b);
+      else groups.push({ key, label, items: [b] });
+    }
+    return groups;
+  }, [sorted]);
 
-  const totalRevenue = useMemo(
-    () => confirmedWithAmount.reduce((sum, b) => sum + (b.total_amount || 0), 0) / 100,
-    [confirmedWithAmount]
-  );
+  // Stats — use filtered data
+  const confirmedFiltered = useMemo(() => filtered.filter((b) => b.status === "confirmed"), [filtered]);
+  const confirmedWithAmount = useMemo(() => confirmedFiltered.filter((b) => b.total_amount > 0), [confirmedFiltered]);
+  const totalRevenue = useMemo(() => confirmedWithAmount.reduce((s, b) => s + b.total_amount, 0) / 100, [confirmedWithAmount]);
   const totalBookings = confirmedFiltered.length;
   const avgNights = useMemo(() => {
-    if (confirmedFiltered.length === 0) return 0;
-    return confirmedFiltered.reduce((sum, b) => sum + (b.nights || 0), 0) / confirmedFiltered.length;
+    if (!confirmedFiltered.length) return 0;
+    return confirmedFiltered.reduce((s, b) => s + (b.nights || 0), 0) / confirmedFiltered.length;
   }, [confirmedFiltered]);
   const avgRevenue = confirmedWithAmount.length > 0 ? totalRevenue / confirmedWithAmount.length : 0;
 
-  const formatGBP = (n: number) =>
-    `£${n.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`;
+  const formatGBP = (n: number) => `£${n.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`;
 
   const SortIndicator = ({ col }: { col: SortKey }) => (
     <span className="ml-1 opacity-60">{sortKey === col ? (sortDir === "asc" ? "▲" : "▼") : ""}</span>
   );
 
-  const thClass = "font-mono text-[9px] tracking-[0.15em] uppercase text-dark/40 px-4 py-3 text-left cursor-pointer select-none";
-  const inputClass = "px-3 py-2 rounded-lg border border-dark/10 font-sans text-sm text-dark focus:outline-none focus:border-sage transition-colors";
+  const thClass = "font-mono text-[9px] tracking-[0.15em] uppercase text-dark/40 px-4 py-3 text-left cursor-pointer select-none whitespace-nowrap";
+  const selectClass = "px-3 py-2 rounded-lg border border-dark/10 font-sans text-sm text-dark focus:outline-none focus:border-sage transition-colors bg-white";
 
   const summaryCards = [
     { label: "Total Revenue", value: formatGBP(totalRevenue) },
@@ -188,13 +191,13 @@ export default function FinancePage() {
 
   return (
     <div className="p-4 md:p-8 max-w-6xl">
-      <div className="mb-6">
+      <div className="mb-5">
         <h1 className="font-serif text-2xl text-dark">Finance</h1>
         <p className="font-sans text-xs text-dark/40 mt-1">Revenue and booking summary</p>
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
         {summaryCards.map((card) => (
           <div key={card.label} className="bg-white rounded-xl border border-dark/5 p-5">
             <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-dark/35 mb-1">{card.label}</p>
@@ -204,48 +207,50 @@ export default function FinancePage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <div className="flex items-center gap-2">
-          <label className="font-mono text-[9px] tracking-[0.15em] uppercase text-dark/40">From</label>
-          <input
-            type="date"
-            value={filterFrom}
-            onChange={(e) => setFilterFrom(e.target.value)}
-            className={inputClass}
-          />
+      <div className="bg-white rounded-xl border border-dark/5 p-4 mb-4 space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {/* Year */}
+          <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className={selectClass}>
+            <option value="All">All years</option>
+            {availableYears.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+          {/* From */}
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-[9px] tracking-[0.15em] uppercase text-dark/40">From</span>
+            <input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} className={selectClass} />
+          </div>
+          {/* To */}
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-[9px] tracking-[0.15em] uppercase text-dark/40">To</span>
+            <input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} className={selectClass} />
+          </div>
+          {/* Source */}
+          <select value={filterSource} onChange={(e) => setFilterSource(e.target.value)} className={selectClass}>
+            <option value="All">All sources</option>
+            {bookingSources.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          {/* Status */}
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={selectClass}>
+            <option value="All">All statuses</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="pending">Pending</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
         </div>
         <div className="flex items-center gap-2">
-          <label className="font-mono text-[9px] tracking-[0.15em] uppercase text-dark/40">To</label>
           <input
-            type="date"
-            value={filterTo}
-            onChange={(e) => setFilterTo(e.target.value)}
-            className={inputClass}
+            type="text"
+            placeholder="Search by name, source, amount…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className={`${selectClass} flex-1 min-w-0`}
           />
+          {hasFilters && (
+            <button onClick={handleClearFilters} className="font-sans text-xs text-dark/40 hover:text-dark/70 transition-colors whitespace-nowrap underline">
+              Clear
+            </button>
+          )}
         </div>
-        <select
-          value={filterSource}
-          onChange={(e) => setFilterSource(e.target.value)}
-          className={inputClass}
-        >
-          <option value="All">All sources</option>
-          {bookingSources.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <input
-          type="text"
-          placeholder="Search…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className={`${inputClass} w-56`}
-        />
-        {(filterFrom || filterTo || filterSource !== "All" || search) && (
-          <button
-            onClick={handleClearFilters}
-            className="font-sans text-xs text-dark/40 hover:text-dark/70 transition-colors underline"
-          >
-            Clear filters
-          </button>
-        )}
       </div>
 
       {error ? (
@@ -258,8 +263,8 @@ export default function FinancePage() {
         <div className="bg-white rounded-xl border border-dark/5 overflow-x-auto">
           <table className="w-full min-w-[580px]">
             <thead>
-              <tr className="bg-stone/40">
-                <th className={thClass} onClick={() => handleSort("check_in")}>Date<SortIndicator col="check_in" /></th>
+              <tr className="bg-stone/40 border-b border-dark/5">
+                <th className={thClass} onClick={() => handleSort("check_in")}>Check-in<SortIndicator col="check_in" /></th>
                 <th className={thClass} onClick={() => handleSort("guest_name")}>Guest<SortIndicator col="guest_name" /></th>
                 <th className={thClass} onClick={() => handleSort("source")}>Source<SortIndicator col="source" /></th>
                 <th className={thClass} onClick={() => handleSort("nights")}>Nights<SortIndicator col="nights" /></th>
@@ -269,31 +274,51 @@ export default function FinancePage() {
               </tr>
             </thead>
             <tbody>
-              {sorted.length === 0 ? (
+              {grouped.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center font-sans text-sm text-dark/30">No bookings found</td>
                 </tr>
               ) : (
-                sorted.map((b) => (
-                  <tr key={b.id} onClick={() => setEditingBooking(b)} className="border-b border-dark/5 hover:bg-stone/20 transition-colors cursor-pointer">
-                    <td className="font-sans text-sm text-dark px-4 py-3 whitespace-nowrap">{formatDate(b.check_in)}</td>
-                    <td className="font-sans text-sm text-dark px-4 py-3">{b.guest_name || "—"}</td>
-                    <td className="font-sans text-sm text-dark px-4 py-3">
-                      <span className={`font-mono text-[9px] tracking-wide px-2 py-0.5 rounded-full ${sourceBadgeClass(b.source)}`}>
-                        {b.source || "—"}
-                      </span>
-                    </td>
-                    <td className="font-sans text-sm text-dark px-4 py-3">{b.nights}</td>
-                    <td className="font-sans text-sm text-dark px-4 py-3 whitespace-nowrap">{formatDate(b.check_out)}</td>
-                    <td className="font-sans text-sm text-dark px-4 py-3 whitespace-nowrap">
-                      {b.total_amount > 0 ? `£${(b.total_amount / 100).toLocaleString("en-GB", { maximumFractionDigits: 0 })}` : "—"}
-                    </td>
-                    <td className="font-sans text-sm text-dark px-4 py-3">
-                      <span className={`font-mono text-[9px] tracking-wide px-2 py-0.5 rounded-full ${statusBadgeClass(b.status)}`}>
-                        {b.status}
-                      </span>
-                    </td>
-                  </tr>
+                grouped.map(({ key, label, items }) => (
+                  <Fragment key={key}>
+                    {/* Month header */}
+                    <tr className="bg-stone/60 border-t border-dark/8">
+                      <td colSpan={7} className="px-4 py-2">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-dark/60 font-medium">{label}</span>
+                          <span className="font-sans text-[11px] text-dark/35">
+                            {items.length} booking{items.length !== 1 ? "s" : ""}
+                            {" · "}
+                            {items.filter(b => b.total_amount > 0).length > 0
+                              ? formatGBP(items.filter(b => b.total_amount > 0).reduce((s, b) => s + b.total_amount, 0) / 100)
+                              : "no revenue recorded"}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                    {/* Rows */}
+                    {items.map((b) => (
+                      <tr key={b.id} onClick={() => setEditingBooking(b)} className="border-b border-dark/5 hover:bg-stone/20 transition-colors cursor-pointer">
+                        <td className="font-sans text-sm text-dark px-4 py-3 whitespace-nowrap">{formatDate(b.check_in)}</td>
+                        <td className="font-sans text-sm text-dark px-4 py-3">{b.guest_name || "—"}</td>
+                        <td className="px-4 py-3">
+                          <span className={`font-mono text-[9px] tracking-wide px-2 py-0.5 rounded-full ${sourceBadgeClass(b.source)}`}>
+                            {b.source || "—"}
+                          </span>
+                        </td>
+                        <td className="font-sans text-sm text-dark px-4 py-3">{b.nights}</td>
+                        <td className="font-sans text-sm text-dark px-4 py-3 whitespace-nowrap">{formatDate(b.check_out)}</td>
+                        <td className="font-sans text-sm text-dark px-4 py-3 whitespace-nowrap">
+                          {b.total_amount > 0 ? `£${(b.total_amount / 100).toLocaleString("en-GB", { maximumFractionDigits: 0 })}` : "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`font-mono text-[9px] tracking-wide px-2 py-0.5 rounded-full ${statusBadgeClass(b.status)}`}>
+                            {b.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))
               )}
             </tbody>
@@ -312,11 +337,6 @@ export default function FinancePage() {
     </div>
   );
 }
-
-const toDateInput = (s: string) => {
-  const d = toLocalNoon(s);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
 
 function BookingModal({ sources, booking, onClose, onSaved }: {
   sources: string[];
