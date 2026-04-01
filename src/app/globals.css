@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-@theme inline {
+/* Colors use @theme (not inline) so Tailwind emits CSS custom properties —
+   this allows html.dark to override them at runtime */
+@theme {
   --color-warm-white: #FAFAF8;
   --color-dark: #1A1A18;
   --color-dark-overlay: #0A1A12;
@@ -15,7 +17,10 @@
   --color-glass: rgba(255, 255, 255, 0.12);
   --color-glass-strong: rgba(255, 255, 255, 0.18);
   --color-glass-border: rgba(255, 255, 255, 0.2);
+}
 
+/* Fonts stay inline — they reference Next.js font-loader variables */
+@theme inline {
   --font-sans: var(--font-sans);
   --font-serif: var(--font-serif);
   --font-mono: var(--font-mono);
