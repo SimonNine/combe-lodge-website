@@ -169,7 +169,7 @@ export default function Calendar({
               >
                 <span className="font-medium">{date.getDate()}</span>
                 {!unavailable && !selected && (
-                  <span className="text-[8px] leading-none text-dark/25 mt-0.5">
+                  <span className="text-[8px] leading-none mt-0.5 px-1 py-px rounded-sm bg-moss text-light-text/90">
                     {formatPrice(nightlyRate).replace("£", "£")}
                   </span>
                 )}
