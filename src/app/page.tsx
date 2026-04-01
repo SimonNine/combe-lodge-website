@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Navigation from "@/components/ui/Navigation";
 import Hero from "@/components/sections/Hero";
+import HeroAlternatives from "@/components/sections/HeroAlternatives";
 import TheSetting from "@/components/sections/TheSetting";
 import TheLodge from "@/components/sections/TheLodge";
 import TheRooms from "@/components/sections/TheRooms";
@@ -17,6 +18,7 @@ export default function Home() {
     <main className="grain" key={pathname}>
       <Navigation />
       <Hero />
+      <HeroAlternatives />
       <TheLodge />
       <TheRooms />
       <TheSetting />

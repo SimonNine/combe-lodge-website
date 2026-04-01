@@ -52,7 +52,7 @@ export default function Hero() {
             Combe
           </motion.h1>
         </div>
-        <div className="overflow-hidden pb-1">
+        <div className="overflow-hidden pb-3 md:pb-4">
           <motion.h1
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
