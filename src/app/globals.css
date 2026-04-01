@@ -21,6 +21,20 @@
   --font-mono: var(--font-mono);
 }
 
+/* Dark theme — override CSS variables so all Tailwind utilities auto-flip */
+html.dark {
+  --color-warm-white: #141413;
+  --color-dark: #E8E4DE;
+  --color-stone: #1E1E1C;
+  --color-stone-dark: #2A2A28;
+  --color-moss: #5A9B65;
+  --color-moss-light: #6AAF72;
+  --color-sage: #8AAF80;
+  --color-sage-dark: #9BC492;
+  --color-wheat: #D4B88A;
+  /* dark-overlay, light-text, glass stay unchanged — they're used on hero/dark sections */
+}
+
 /* Grain texture overlay */
 .grain::before {
   content: "";

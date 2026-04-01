@@ -1,6 +1,6 @@
 {
   "pricing": {
-    "baseNightlyRate": 30000,
+    "baseNightlyRate": 25000,
     "cleaningFee": 8000,
     "weekendPremiumPercent": 0,
     "depositPercent": 100,

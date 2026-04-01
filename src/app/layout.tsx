@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Serif_Display, DM_Sans, Space_Grotesk } from "next/font/google";
+import { ThemeProvider } from "@/context/ThemeContext";
 import FloatingBookButton from "@/components/ui/FloatingBookButton";
 import "./globals.css";
 
@@ -53,10 +54,16 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${dmSerif.variable} ${dmSans.variable} ${spaceGrotesk.variable} antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-screen bg-warm-white text-dark font-sans font-light">
-        {children}
-        <FloatingBookButton />
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}` }} />
+      </head>
+      <body className="min-h-screen bg-warm-white text-dark font-sans font-light transition-colors duration-300">
+        <ThemeProvider>
+          {children}
+          <FloatingBookButton />
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -10,6 +10,7 @@ const NAV = [
   { href: "/admin/rules", label: "Booking Rules", icon: "✦" },
   { href: "/admin/bookings", label: "Bookings", icon: "▦" },
   { href: "/admin/finance", label: "Finance", icon: "£" },
+  { href: "/admin/guestbook", label: "Guestbook", icon: "✎" },
   { href: "/admin/trash", label: "Trash", icon: "⌫" },
   { href: "/admin/settings", label: "Settings", icon: "⚙" },
 ];
