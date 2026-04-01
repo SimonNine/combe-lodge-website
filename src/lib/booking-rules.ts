@@ -19,11 +19,13 @@ export interface SeasonalPricing {
 }
 
 export interface DiscountPeriod {
-  id?: string;
+  id: string;
   name: string;
-  startDate: string; // YYYY-MM-DD
-  endDate: string;
-  discountPercent: number; // e.g., 15 for 15% off
+  discountPercent: number;    // e.g., 15 for 15% off
+  minNights?: number;         // only applies when stay >= this (optional)
+  startDate?: string;         // YYYY-MM-DD — if omitted, no start bound
+  endDate?: string;           // YYYY-MM-DD — if omitted, no end bound
+  enabled: boolean;           // quick toggle without deleting
 }
 
 export interface PricingConfig {
@@ -187,20 +189,29 @@ export function validateBooking(
   return { valid: true };
 }
 
-// Get active discount for a date range (returns first matching discount period)
+// Get active discount for a date range (returns first matching enabled discount)
 export function getDiscountForRange(
   checkIn: Date,
   checkOut: Date,
   pricing: PricingConfig = DEFAULT_PRICING
 ): DiscountPeriod | null {
   if (!pricing.discountPeriods?.length) return null;
+
+  const nights = Math.round(
+    (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)
+  );
   const checkInStr = formatDate(checkIn);
   const checkOutStr = formatDate(checkOut);
-  // Discount applies if the check-in falls within a discount period
+
   for (const dp of pricing.discountPeriods) {
-    if (checkInStr >= dp.startDate && checkInStr <= dp.endDate) return dp;
-    // Also apply if any night of the stay overlaps the discount period
-    if (checkInStr <= dp.endDate && checkOutStr > dp.startDate) return dp;
+    if (!dp.enabled) continue;
+    if (dp.minNights && nights < dp.minNights) continue;
+
+    // Date range check — both bounds optional
+    if (dp.startDate && checkInStr < dp.startDate) continue;
+    if (dp.endDate && checkOutStr > dp.endDate) continue;
+
+    return dp;
   }
   return null;
 }

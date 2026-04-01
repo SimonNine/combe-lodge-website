@@ -57,6 +57,10 @@ export async function getAdminConfig(): Promise<AdminConfig> {
       const config = result.rows[0].value;
       // Backfill any fields added after initial save
       if (!config.pricing.discountPeriods) config.pricing.discountPeriods = [];
+      // Backfill enabled flag on old discounts that predate this field
+      config.pricing.discountPeriods = config.pricing.discountPeriods.map((d) =>
+        d.enabled === undefined ? { ...d, enabled: true } : d
+      );
       if (!config.bookingSources) config.bookingSources = ["Direct", "Kentisbury Grange", "Luxury Coastal"];
       if (!config.siteSettings.whatHappensNext) config.siteSettings.whatHappensNext = DEFAULT_SITE_SETTINGS.whatHappensNext;
       return config;
