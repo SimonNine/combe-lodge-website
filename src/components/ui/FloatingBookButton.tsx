@@ -42,14 +42,14 @@ export default function FloatingBookButton() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/config")
+    fetch("/api/config", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         if (d.pricing) setAdminPricing(d.pricing);
         if (d.rules) setAdminRules(d.rules);
       })
       .catch(() => {});
-    fetch("/api/availability")
+    fetch("/api/availability", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         if (d.bookedDates) setBookedDates(d.bookedDates);
