@@ -215,6 +215,7 @@ export default function FloatingBookButton() {
                 checkOut={checkOut}
                 onSelectDate={handleSelectDate}
                 bookedDates={bookedDates}
+                pricing={adminPricing}
               />
 
               {/* Error */}
@@ -244,12 +245,26 @@ export default function FloatingBookButton() {
                   animate={{ opacity: 1, y: 0 }}
                   className="flex items-center justify-between mb-3 px-3 py-2 rounded-lg bg-stone/50"
                 >
-                  <span className="font-sans font-light text-xs text-dark/50">
-                    {pricing.nights} night{pricing.nights > 1 ? "s" : ""} + cleaning
-                  </span>
-                  <span className="font-serif text-base text-dark">
-                    {formatPrice(pricing.total)}
-                  </span>
+                  <div>
+                    <span className="font-sans font-light text-xs text-dark/50">
+                      {pricing.nights} night{pricing.nights > 1 ? "s" : ""} + cleaning
+                    </span>
+                    {pricing.discount && (
+                      <span className="ml-1.5 font-mono text-[9px] px-1.5 py-0.5 rounded bg-moss/15 text-moss font-bold">
+                        {pricing.discount.discountPercent}% off
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {pricing.discount && pricing.undiscountedTotal > pricing.total && (
+                      <span className="font-sans text-xs text-dark/30 line-through">
+                        {formatPrice(pricing.undiscountedTotal)}
+                      </span>
+                    )}
+                    <span className="font-serif text-base text-dark">
+                      {formatPrice(pricing.total)}
+                    </span>
+                  </div>
                 </motion.div>
               )}
 
