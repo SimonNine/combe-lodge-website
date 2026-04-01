@@ -44,83 +44,66 @@ export default function PriceSummary({
       <h3 className="font-serif text-lg text-dark">Your Stay</h3>
 
       <div className="mt-4 space-y-3">
+        {/* Dates */}
         <div className="flex justify-between items-center">
-          <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-dark/40">
-            Check-in
-          </span>
-          <span className="font-sans text-sm text-dark">
-            {formatDateDisplay(checkIn)}
-          </span>
+          <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-dark/40">Check-in</span>
+          <span className="font-sans text-sm text-dark">{formatDateDisplay(checkIn)}</span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-dark/40">
-            Check-out
-          </span>
-          <span className="font-sans text-sm text-dark">
-            {formatDateDisplay(checkOut)}
-          </span>
+          <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-dark/40">Check-out</span>
+          <span className="font-sans text-sm text-dark">{formatDateDisplay(checkOut)}</span>
         </div>
 
-        <div className="h-px bg-dark/8 my-2" />
+        <div className="h-px bg-dark/8 my-1" />
 
+        {/* Accommodation */}
         {allSameRate ? (
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center gap-3">
             <span className="font-sans font-light text-sm text-dark/60">
-              {formatPrice(nightlyBreakdown[0].rate)} x {nights} night
-              {nights > 1 ? "s" : ""}
+              {formatPrice(nightlyBreakdown[0].rate)} &times; {nights} night{nights > 1 ? "s" : ""}
             </span>
-            <span className="font-sans text-sm text-dark">
-              {formatPrice(subtotal)}
-            </span>
+            <PricePill value={formatPrice(subtotal)} />
           </div>
         ) : (
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center gap-3">
             <span className="font-sans font-light text-sm text-dark/60">
-              {nights} night{nights > 1 ? "s" : ""} (avg{" "}
-              {formatPrice(avgNightlyRate)}/night)
+              {nights} night{nights > 1 ? "s" : ""}{" "}
+              <span className="text-dark/35 text-xs">(avg {formatPrice(avgNightlyRate)}/night)</span>
             </span>
-            <span className="font-sans text-sm text-dark">
-              {formatPrice(subtotal)}
-            </span>
+            <PricePill value={formatPrice(subtotal)} />
           </div>
         )}
 
-        <div className="flex justify-between items-center">
-          <span className="font-sans font-light text-sm text-dark/60">
-            Cleaning fee
-          </span>
-          <span className="font-sans text-sm text-dark">
-            {formatPrice(cleaningFee)}
-          </span>
+        {/* Cleaning fee */}
+        <div className="flex justify-between items-center gap-3">
+          <span className="font-sans font-light text-sm text-dark/60">Cleaning fee</span>
+          <PricePill value={formatPrice(cleaningFee)} />
         </div>
 
+        {/* Discount */}
         {hasDiscount && (
-          <div className="flex justify-between items-center text-sage-dark">
-            <span className="font-sans font-light text-sm">
+          <div className="flex justify-between items-center gap-3">
+            <span className="font-sans font-light text-sm text-sage-dark">
               {discount.name} ({discount.discountPercent}% off)
             </span>
-            <span className="font-sans text-sm">
-              -{formatPrice(undiscountedTotal - total)}
-            </span>
+            <PricePill value={`-${formatPrice(undiscountedTotal - total)}`} variant="discount" />
           </div>
         )}
 
-        <div className="h-px bg-dark/8 my-2" />
+        <div className="h-px bg-dark/8 my-1" />
 
-        <div className="flex justify-between items-center">
+        {/* Total */}
+        <div className="flex justify-between items-center gap-3">
           <span className="font-sans font-medium text-base text-dark">Total</span>
-          <div className="text-right">
+          <div className="flex items-center gap-2">
             {hasDiscount && (
-              <span className="font-sans text-sm text-dark/30 line-through block">
-                {formatPrice(undiscountedTotal)}
-              </span>
+              <span className="font-sans text-xs text-dark/30 line-through">{formatPrice(undiscountedTotal)}</span>
             )}
-            <span className="font-serif text-xl text-dark">
-              {formatPrice(total)}
-            </span>
+            <PricePill value={formatPrice(total)} variant="total" />
           </div>
         </div>
 
+        {/* Discount banner */}
         {hasDiscount && (
           <motion.div
             initial={{ opacity: 0, y: 6 }}
@@ -135,16 +118,38 @@ export default function PriceSummary({
           </motion.div>
         )}
 
+        {/* Deposit */}
         {deposit < total && (
-          <div className="flex justify-between items-center text-sage-dark">
-            <span className="font-sans font-light text-sm">Due today (deposit)</span>
-            <span className="font-sans font-medium text-sm">
-              {formatPrice(deposit)}
-            </span>
+          <div className="flex justify-between items-center gap-3 pt-1">
+            <span className="font-sans font-light text-sm text-dark/60">Due today (deposit)</span>
+            <PricePill value={formatPrice(deposit)} variant="deposit" />
           </div>
         )}
       </div>
     </motion.div>
+  );
+}
+
+function PricePill({
+  value,
+  variant = "default",
+}: {
+  value: string;
+  variant?: "default" | "discount" | "total" | "deposit";
+}) {
+  const styles = {
+    default: "bg-white/70 border border-dark/8 text-dark",
+    discount: "bg-sage/15 border border-sage/30 text-sage-dark",
+    total: "bg-dark text-light-text border border-transparent",
+    deposit: "bg-moss/10 border border-moss/20 text-moss",
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center px-2.5 py-1 rounded-full font-mono text-xs font-medium whitespace-nowrap flex-shrink-0 ${styles[variant]}`}
+    >
+      {value}
+    </span>
   );
 }
 
