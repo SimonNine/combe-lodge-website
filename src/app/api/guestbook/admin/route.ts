@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getEntriesByStatus, getAdminEntries, createEntry, updateEntryStatus, deleteEntry, cleanupTrash } from "@/lib/guestbook";
+import { getEntriesByStatus, getAdminEntries, createEntry, updateEntry, updateEntryStatus, deleteEntry, cleanupTrash } from "@/lib/guestbook";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +40,19 @@ export async function POST(req: NextRequest) {
         status: body.publish ? "approved" : "draft",
       });
       return NextResponse.json({ entry });
+    }
+
+    // Action: edit entry fields
+    if (body.action === "edit" && body.id) {
+      await updateEntry(body.id, {
+        name: body.name,
+        location: body.location,
+        stayStart: body.stayStart,
+        stayEnd: body.stayEnd,
+        message: body.message,
+        rating: body.rating,
+      });
+      return NextResponse.json({ ok: true });
     }
 
     // Action: update status (approve, reject, trash, restore, publish, draft)

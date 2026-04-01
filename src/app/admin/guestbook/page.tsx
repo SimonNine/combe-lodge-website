@@ -24,6 +24,8 @@ export default function AdminGuestbookPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<Partial<Entry>>({});
   const [counts, setCounts] = useState<Record<Tab, number>>({ pending: 0, approved: 0, admin: 0, trash: 0 });
 
   const loadTab = useCallback(async (t: Tab) => {
@@ -54,6 +56,32 @@ export default function AdminGuestbookPage() {
     });
     loadTab(tab);
     loadCounts();
+  };
+
+  const startEdit = (entry: Entry) => {
+    setEditingId(entry.id);
+    setEditDraft({ ...entry });
+  };
+
+  const saveEdit = async () => {
+    if (!editingId || !editDraft.name || !editDraft.message) return;
+    await fetch("/api/guestbook/admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "edit",
+        id: editingId,
+        name: editDraft.name,
+        location: editDraft.location || "",
+        stayStart: editDraft.stay_start || "",
+        stayEnd: editDraft.stay_end || "",
+        message: editDraft.message,
+        rating: editDraft.rating,
+      }),
+    });
+    setEditingId(null);
+    setEditDraft({});
+    loadTab(tab);
   };
 
   const createEntry = async (form: { name: string; location: string; stayStart: string; stayEnd: string; message: string; rating: number; publish: boolean }) => {
@@ -123,63 +151,113 @@ export default function AdminGuestbookPage() {
         <p className="font-sans text-sm text-dark/30 py-8 text-center italic">No entries.</p>
       ) : (
         <div className="space-y-3">
-          {entries.map((entry) => (
-            <div key={entry.id} className="bg-white rounded-xl border border-dark/5 p-5 shadow-sm">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-sans font-medium text-sm text-dark">{entry.name}</span>
-                    {entry.location && <span className="font-sans font-light text-xs text-dark/35">{entry.location}</span>}
-                    {entry.is_admin_entry && (
-                      <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-sage/15 text-sage-dark">Admin</span>
-                    )}
-                    <div className="flex gap-0.5">
+          {entries.map((entry) => {
+            const isEditing = editingId === entry.id;
+
+            if (isEditing) {
+              return (
+                <div key={entry.id} className="bg-white rounded-xl border border-sage/30 p-5 shadow-sm space-y-4">
+                  <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-dark/40">Editing Entry</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-mono text-[9px] tracking-[0.12em] uppercase text-dark/35 block mb-1">Name</label>
+                      <input value={editDraft.name || ""} onChange={(e) => setEditDraft((d) => ({ ...d, name: e.target.value }))} className="w-full p-2 rounded-lg border border-dark/10 font-sans text-sm bg-transparent focus:outline-none focus:border-sage" />
+                    </div>
+                    <div>
+                      <label className="font-mono text-[9px] tracking-[0.12em] uppercase text-dark/35 block mb-1">Location</label>
+                      <input value={editDraft.location || ""} onChange={(e) => setEditDraft((d) => ({ ...d, location: e.target.value }))} className="w-full p-2 rounded-lg border border-dark/10 font-sans text-sm bg-transparent focus:outline-none focus:border-sage" />
+                    </div>
+                    <div>
+                      <label className="font-mono text-[9px] tracking-[0.12em] uppercase text-dark/35 block mb-1">Stay from</label>
+                      <input type="date" value={editDraft.stay_start ? editDraft.stay_start.split("T")[0] : ""} onChange={(e) => setEditDraft((d) => ({ ...d, stay_start: e.target.value }))} className="w-full p-2 rounded-lg border border-dark/10 font-sans text-sm bg-transparent focus:outline-none focus:border-sage" />
+                    </div>
+                    <div>
+                      <label className="font-mono text-[9px] tracking-[0.12em] uppercase text-dark/35 block mb-1">Stay to</label>
+                      <input type="date" value={editDraft.stay_end ? editDraft.stay_end.split("T")[0] : ""} onChange={(e) => setEditDraft((d) => ({ ...d, stay_end: e.target.value }))} className="w-full p-2 rounded-lg border border-dark/10 font-sans text-sm bg-transparent focus:outline-none focus:border-sage" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="font-mono text-[9px] tracking-[0.12em] uppercase text-dark/35 block mb-1">Message</label>
+                    <textarea value={editDraft.message || ""} onChange={(e) => setEditDraft((d) => ({ ...d, message: e.target.value }))} rows={3} className="w-full p-2 rounded-lg border border-dark/10 font-sans text-sm bg-transparent focus:outline-none focus:border-sage resize-none" />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map((s) => (
-                        <svg key={s} width="10" height="10" viewBox="0 0 24 24" fill={s <= entry.rating ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" className={s <= entry.rating ? "text-wheat" : "text-dark/10"}>
-                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                        </svg>
+                        <button key={s} onClick={() => setEditDraft((d) => ({ ...d, rating: s }))}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill={s <= (editDraft.rating || 5) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5" className={s <= (editDraft.rating || 5) ? "text-wheat" : "text-dark/20"}>
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                          </svg>
+                        </button>
                       ))}
                     </div>
                   </div>
-                  <p className="font-sans font-light text-sm text-dark/60 mt-2 line-clamp-3">{entry.message}</p>
-                  <p className="font-mono text-[10px] text-dark/25 mt-2">
-                    {new Date(entry.created_at).toLocaleDateString("en-GB")}
-                    {entry.stay_start && ` · Stayed ${new Date(entry.stay_start).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}`}
-                    {entry.trashed_at && ` · Trashed ${new Date(entry.trashed_at).toLocaleDateString("en-GB")}`}
-                  </p>
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={saveEdit} className="px-4 py-2 rounded-lg bg-moss text-light-text font-sans text-xs font-medium hover:bg-moss-light transition-colors">Save</button>
+                    <button onClick={() => { setEditingId(null); setEditDraft({}); }} className="px-4 py-2 rounded-lg border border-dark/10 text-dark/50 font-sans text-xs hover:border-dark/20 transition-colors">Cancel</button>
+                  </div>
                 </div>
+              );
+            }
 
-                {/* Actions */}
-                <div className="flex gap-2 flex-shrink-0">
-                  {tab === "pending" && (
-                    <>
-                      <ActionBtn label="Approve" onClick={() => action("updateStatus", entry.id, "approved")} color="moss" />
-                      <ActionBtn label="Reject" onClick={() => action("updateStatus", entry.id, "trash")} color="red" />
-                    </>
-                  )}
-                  {tab === "approved" && (
-                    <ActionBtn label="Trash" onClick={() => action("updateStatus", entry.id, "trash")} color="red" />
-                  )}
-                  {tab === "admin" && (
-                    <>
-                      <ActionBtn
-                        label={entry.status === "approved" ? "Unpublish" : "Publish"}
-                        onClick={() => action("updateStatus", entry.id, entry.status === "approved" ? "draft" : "approved")}
-                        color="moss"
-                      />
-                      <ActionBtn label="Delete" onClick={() => action("updateStatus", entry.id, "trash")} color="red" />
-                    </>
-                  )}
-                  {tab === "trash" && (
-                    <>
-                      <ActionBtn label="Restore" onClick={() => action("updateStatus", entry.id, "pending")} color="moss" />
-                      <ActionBtn label="Delete forever" onClick={() => action("delete", entry.id)} color="red" />
-                    </>
-                  )}
+            return (
+              <div key={entry.id} className="bg-white rounded-xl border border-dark/5 p-5 shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-sans font-medium text-sm text-dark">{entry.name}</span>
+                      {entry.location && <span className="font-sans font-light text-xs text-dark/35">{entry.location}</span>}
+                      {entry.is_admin_entry && (
+                        <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-sage/15 text-sage-dark">Admin</span>
+                      )}
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <svg key={s} width="10" height="10" viewBox="0 0 24 24" fill={s <= entry.rating ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" className={s <= entry.rating ? "text-wheat" : "text-dark/10"}>
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                          </svg>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="font-sans font-light text-sm text-dark/60 mt-2 line-clamp-3">{entry.message}</p>
+                    <p className="font-mono text-[10px] text-dark/25 mt-2">
+                      {new Date(entry.created_at).toLocaleDateString("en-GB")}
+                      {entry.stay_start && ` · Stayed ${new Date(entry.stay_start).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}`}
+                      {entry.trashed_at && ` · Trashed ${new Date(entry.trashed_at).toLocaleDateString("en-GB")}`}
+                    </p>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2 flex-shrink-0">
+                    <ActionBtn label="Edit" onClick={() => startEdit(entry)} color="moss" />
+                    {tab === "pending" && (
+                      <>
+                        <ActionBtn label="Approve" onClick={() => action("updateStatus", entry.id, "approved")} color="moss" />
+                        <ActionBtn label="Reject" onClick={() => action("updateStatus", entry.id, "trash")} color="red" />
+                      </>
+                    )}
+                    {tab === "approved" && (
+                      <ActionBtn label="Trash" onClick={() => action("updateStatus", entry.id, "trash")} color="red" />
+                    )}
+                    {tab === "admin" && (
+                      <>
+                        <ActionBtn
+                          label={entry.status === "approved" ? "Unpublish" : "Publish"}
+                          onClick={() => action("updateStatus", entry.id, entry.status === "approved" ? "draft" : "approved")}
+                          color="moss"
+                        />
+                        <ActionBtn label="Delete" onClick={() => action("updateStatus", entry.id, "trash")} color="red" />
+                      </>
+                    )}
+                    {tab === "trash" && (
+                      <>
+                        <ActionBtn label="Restore" onClick={() => action("updateStatus", entry.id, "pending")} color="moss" />
+                        <ActionBtn label="Delete forever" onClick={() => action("delete", entry.id)} color="red" />
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

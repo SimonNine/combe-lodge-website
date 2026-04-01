@@ -104,6 +104,23 @@ export async function createEntry(entry: {
   return result.rows[0];
 }
 
+export async function updateEntry(id: number, fields: {
+  name?: string; location?: string; stayStart?: string; stayEnd?: string;
+  message?: string; rating?: number;
+}): Promise<void> {
+  await sql`
+    UPDATE guestbook_entries
+    SET name = COALESCE(${fields.name ?? null}, name),
+        location = ${fields.location ?? null},
+        stay_start = ${fields.stayStart || null},
+        stay_end = ${fields.stayEnd || null},
+        message = COALESCE(${fields.message ?? null}, message),
+        rating = COALESCE(${fields.rating ?? null}, rating),
+        updated_at = NOW()
+    WHERE id = ${id}
+  `;
+}
+
 export async function updateEntryStatus(id: number, status: string): Promise<void> {
   if (status === "trash") {
     await sql`
