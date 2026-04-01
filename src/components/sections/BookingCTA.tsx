@@ -65,13 +65,22 @@ export default function BookingCTA() {
               <Detail label="Sleeps" value="Up to 4 guests" />
             </div>
 
-            <Link
-              href="/booking"
-              className="group inline-flex items-center gap-2 mt-10 px-9 py-4 rounded-[10px] bg-dark text-light-text font-sans font-medium text-sm tracking-wide hover:bg-moss transition-all duration-300"
-            >
-              Check Availability & Book
-              <span className="group-hover:translate-x-1 transition-transform duration-300">&rarr;</span>
-            </Link>
+            <div className="flex flex-wrap gap-4 mt-10">
+              <Link
+                href="/booking"
+                className="group inline-flex items-center gap-2 px-9 py-4 rounded-[10px] bg-dark text-light-text font-sans font-medium text-sm tracking-wide hover:bg-moss transition-all duration-300"
+              >
+                Check Availability & Book
+                <span className="group-hover:translate-x-1 transition-transform duration-300">&rarr;</span>
+              </Link>
+              <Link
+                href="/postcard"
+                className="group inline-flex items-center gap-2 px-6 py-4 rounded-[10px] border border-dark/12 text-dark/55 font-sans font-light text-sm tracking-wide hover:border-dark/25 hover:text-dark transition-all duration-300"
+              >
+                <span className="text-base">✉</span>
+                Send a Postcard
+              </Link>
+            </div>
           </motion.div>
         </div>
       </div>
