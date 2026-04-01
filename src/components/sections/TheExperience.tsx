@@ -1,101 +1,86 @@
 "use client";
 
-import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef } from "react";
-import SectionLabel from "../ui/SectionLabel";
-import FadeIn from "../ui/FadeIn";
+import { motion } from "framer-motion";
 
 const experiences = [
   {
     title: "Exmoor National Park",
     desc: "Ancient woodland, wild ponies, and dramatic valleys. The park begins at your doorstep.",
+    image: "/images/grounds.jpg",
   },
   {
     title: "North Devon Coast",
     desc: "Dramatic cliffs, hidden coves, and world-class surfing beaches fifteen minutes away.",
-  },
-  {
-    title: "Heddon Valley",
-    desc: "One of England's finest gorge walks, leading from Exmoor moorland down to the sea.",
+    image: "/images/landscape.jpg",
   },
   {
     title: "On-site Dining",
     desc: "Award-winning restaurant and bar at Kentisbury Grange. Locally sourced, seasonally inspired.",
+    image: "/images/restaurant.jpg",
   },
 ];
 
 export default function TheExperience() {
-  const ref = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"],
-  });
-
-  const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "15%"]);
-
   return (
-    <section
-      ref={ref}
-      id="experience"
-      className="relative min-h-screen flex items-center overflow-hidden"
-    >
-      {/* Background */}
-      <motion.div style={{ y: bgY }} className="absolute inset-0 -top-20 -bottom-20">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url('/images/grounds.jpg')` }}
-        />
-        <div className="absolute inset-0 bg-dark-overlay/65" />
-      </motion.div>
-
-      {/* Content */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-10 py-24">
-        <SectionLabel number="05" label="The Experience" light />
-
-        <FadeIn delay={0.1}>
-          <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl text-light-text mt-6 leading-[1.1]">
-            Beyond the lodge
-          </h2>
-        </FadeIn>
-
-        <FadeIn delay={0.15}>
+    <section id="experience" className="relative bg-dark-overlay overflow-hidden py-24 md:py-36">
+      <div className="w-full max-w-7xl mx-auto px-6 md:px-10">
+        {/* Header */}
+        <div className="grid md:grid-cols-12 gap-8 mb-16">
           <motion.div
-            initial={{ scaleX: 0 }}
-            whileInView={{ scaleX: 1 }}
-            viewport={{ once: false }}
-            transition={{ duration: 1, delay: 0.3, ease: [0.33, 1, 0.68, 1] }}
-            className="h-px w-16 bg-wheat/50 origin-left mt-6 mb-12"
-          />
-        </FadeIn>
+            className="md:col-span-6"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
+            <p className="font-mono text-[9px] tracking-[0.3em] uppercase text-sage/70 mb-6">
+              The Experience
+            </p>
+            <h2 className="font-serif text-4xl sm:text-5xl md:text-6xl text-light-text leading-[1.05]">
+              Beyond
+              <br />
+              the lodge
+            </h2>
+          </motion.div>
+          <motion.div
+            className="md:col-span-4 md:col-start-9 md:pt-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.15 }}
+          >
+            <p className="font-sans font-light text-light-text/40 text-sm leading-relaxed">
+              From wild moorland walks to award-winning dining, the landscape
+              around Combe Lodge is as rich as the retreat itself.
+            </p>
+          </motion.div>
+        </div>
 
-        <div className="grid sm:grid-cols-2 gap-px bg-light-text/10 rounded-[10px] overflow-hidden">
+        {/* Image cards — editorial grid like Lucomoria services */}
+        <div className="grid md:grid-cols-3 gap-4">
           {experiences.map((exp, i) => (
             <motion.div
               key={exp.title}
-              initial={{ opacity: 0, y: 20 }}
+              className="group relative aspect-[3/4] rounded-xl overflow-hidden cursor-default"
+              initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: false, margin: "-30px" }}
-              transition={{
-                duration: 0.7,
-                delay: 0.15 + i * 0.08,
-                ease: [0.33, 1, 0.68, 1],
-              }}
-              className="group p-6 md:p-8 bg-dark-overlay/40 backdrop-blur-sm hover:bg-dark-overlay/50 transition-colors duration-500"
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, delay: i * 0.12 }}
             >
-              <motion.div
-                className="w-5 h-px bg-sage/60 mb-4"
-                initial={{ scaleX: 0 }}
-                whileInView={{ scaleX: 1 }}
-                viewport={{ once: false }}
-                transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
-                style={{ originX: 0 }}
+              <div
+                className="absolute inset-0 bg-cover bg-center transition-transform duration-[5s] ease-out group-hover:scale-105"
+                style={{ backgroundImage: `url('${exp.image}')` }}
               />
-              <h3 className="font-serif text-lg text-light-text tracking-wide">
-                {exp.title}
-              </h3>
-              <p className="font-sans font-light text-sm text-light-text/50 mt-2 leading-relaxed">
-                {exp.desc}
-              </p>
+              <div className="absolute inset-0 bg-gradient-to-t from-dark-overlay/80 via-dark-overlay/20 to-transparent" />
+
+              {/* Content pinned bottom */}
+              <div className="absolute bottom-0 left-0 right-0 p-6 md:p-7">
+                <div className="h-px w-8 bg-wheat/40 mb-4" />
+                <h3 className="font-serif text-xl text-light-text">{exp.title}</h3>
+                <p className="font-sans font-light text-sm text-light-text/50 mt-2 leading-relaxed">
+                  {exp.desc}
+                </p>
+              </div>
             </motion.div>
           ))}
         </div>

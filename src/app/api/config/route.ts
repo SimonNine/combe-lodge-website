@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const config = await getAdminConfig();
   return NextResponse.json(
-    { pricing: config.pricing, rules: config.rules },
+    { pricing: config.pricing, rules: config.rules, siteSettings: config.siteSettings },
     { headers: { "Cache-Control": "no-store" } }
   );
 }
