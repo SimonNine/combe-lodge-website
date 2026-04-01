@@ -44,9 +44,16 @@ export default function PostcardPage() {
       img.onerror = () => resolve();
     });
 
-    // --- FRONT: Photo side ---
-    // Draw photo covering left 55%
-    const photoW = W * 0.55;
+    // Layout constants
+    const photoW = W * 0.5;           // Photo takes left half
+    const rightW = W - photoW;        // Right side
+    const pad = 40;                   // Inner padding on right side
+    const rightCenter = photoW + rightW / 2; // Vertical divider position
+    const msgColW = rightCenter - photoW - pad * 2; // Message column width
+    const addrColX = rightCenter + pad / 2;         // Address column x
+    const addrColW = W - addrColX - pad;            // Address column width
+
+    // --- Photo side (left half) ---
     const imgAspect = img.naturalWidth / img.naturalHeight;
     const drawH = H;
     const drawW = drawH * imgAspect;
@@ -58,16 +65,25 @@ export default function PostcardPage() {
     ctx.drawImage(img, offsetX, 0, drawW, drawH);
     ctx.restore();
 
-    // Right side — postcard message area
-    ctx.fillStyle = "#FAF8F5";
-    ctx.fillRect(photoW, 0, W - photoW, H);
+    // Photo label — simple, bottom-left
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    roundRect(ctx, 16, H - 48, 250, 32, 6);
+    ctx.fill();
+    ctx.fillStyle = "#F5F2ED";
+    ctx.font = "11px system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("Combe Lodge at Kentisbury Grange", 28, H - 27);
 
-    // Border
+    // --- Right side — postcard message area ---
+    ctx.fillStyle = "#FAF8F5";
+    ctx.fillRect(photoW, 0, rightW, H);
+
+    // Outer border
     ctx.strokeStyle = "#D4CFC7";
     ctx.lineWidth = 2;
     ctx.strokeRect(1, 1, W - 2, H - 2);
 
-    // Divider line
+    // Photo/message divider
     ctx.beginPath();
     ctx.moveTo(photoW, 0);
     ctx.lineTo(photoW, H);
@@ -75,115 +91,101 @@ export default function PostcardPage() {
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Vertical divider on right side
-    const rightCenter = photoW + (W - photoW) / 2;
+    // "POST CARD" header — centred on right side
+    ctx.fillStyle = "#1A1A18";
+    ctx.font = "600 10px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("P O S T C A R D", rightCenter, 35);
+
+    // Thin rule under header
     ctx.beginPath();
-    ctx.moveTo(rightCenter, 40);
-    ctx.lineTo(rightCenter, H - 40);
+    ctx.moveTo(photoW + pad, 48);
+    ctx.lineTo(W - pad, 48);
     ctx.strokeStyle = "#E8E4DE";
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    // Vertical divider (message | address)
+    ctx.beginPath();
+    ctx.moveTo(rightCenter, 55);
+    ctx.lineTo(rightCenter, H - 30);
+    ctx.strokeStyle = "#E0DCD6";
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // "POST CARD" header
-    ctx.fillStyle = "#1A1A18";
-    ctx.font = "600 11px 'DM Sans', system-ui, sans-serif";
-    ctx.letterSpacing = "6px";
-    ctx.textAlign = "center";
-    ctx.fillText("P O S T C A R D", photoW + (W - photoW) / 2, 45);
-
-    // Stamp area (top right)
-    const stampX = W - 100;
-    const stampY = 55;
-    const stampW = 70;
-    const stampH = 85;
+    // --- Stamp (top-right of right side) ---
+    const stampSize = 65;
+    const stampX = W - pad - stampSize;
+    const stampY = 58;
+    ctx.setLineDash([3, 3]);
     ctx.strokeStyle = "#D4CFC7";
     ctx.lineWidth = 1;
-    // Perforated stamp border
-    ctx.setLineDash([3, 3]);
-    ctx.strokeRect(stampX, stampY, stampW, stampH);
+    ctx.strokeRect(stampX, stampY, stampSize, stampSize + 10);
     ctx.setLineDash([]);
-
-    // Mini lodge icon in stamp
     ctx.fillStyle = "#A3B899";
-    ctx.font = "10px 'DM Sans', system-ui, sans-serif";
+    ctx.font = "bold 9px system-ui, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("COMBE", stampX + stampW / 2, stampY + 35);
-    ctx.fillText("LODGE", stampX + stampW / 2, stampY + 48);
+    ctx.fillText("COMBE", stampX + stampSize / 2, stampY + 28);
+    ctx.fillText("LODGE", stampX + stampSize / 2, stampY + 40);
     ctx.fillStyle = "#C9A87C";
-    ctx.font = "bold 14px 'DM Sans', system-ui, sans-serif";
-    ctx.fillText("🏡", stampX + stampW / 2, stampY + 70);
+    ctx.font = "8px system-ui, sans-serif";
+    ctx.fillText("EST. 2024", stampX + stampSize / 2, stampY + 56);
 
-    // Postmark circle
+    // Postmark circle — overlapping stamp
+    const pmX = stampX - 10;
+    const pmY = stampY + stampSize / 2 + 5;
     ctx.beginPath();
-    ctx.arc(stampX - 15, stampY + stampH / 2, 30, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(163, 184, 153, 0.4)";
+    ctx.arc(pmX, pmY, 25, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(163, 184, 153, 0.35)";
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    ctx.fillStyle = "rgba(163, 184, 153, 0.5)";
-    ctx.font = "8px 'DM Sans', system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("NORTH DEVON", stampX - 15, stampY + stampH / 2 - 5);
-    ctx.fillText("EXMOOR", stampX - 15, stampY + stampH / 2 + 7);
+    ctx.fillStyle = "rgba(163, 184, 153, 0.45)";
+    ctx.font = "7px system-ui, sans-serif";
+    ctx.fillText("NORTH DEVON", pmX, pmY - 4);
+    ctx.fillText("EXMOOR", pmX, pmY + 8);
 
-    // Message (left column of right side)
-    const msgX = photoW + 30;
-    const msgMaxW = rightCenter - photoW - 50;
+    // --- Message column (left of divider) ---
+    const msgX = photoW + pad;
+    const msgY = 80;
     ctx.fillStyle = "#1A1A18";
-    ctx.font = "italic 16px 'DM Serif Display', Georgia, serif";
+    ctx.font = "italic 15px Georgia, serif";
     ctx.textAlign = "left";
-    wrapText(ctx, `"${message}"`, msgX, 100, msgMaxW, 24);
+    const msgEndY = wrapText(ctx, `\u201C${message}\u201D`, msgX, msgY, msgColW, 22);
 
-    // From name
+    // From name — sits right below message
     if (fromName) {
-      ctx.font = "15px 'DM Serif Display', Georgia, serif";
+      ctx.font = "14px Georgia, serif";
       ctx.fillStyle = "#1A1A18";
-      ctx.fillText(`— ${fromName}`, msgX, H - 60);
+      ctx.fillText(`\u2014 ${fromName}`, msgX, msgEndY + 30);
     }
 
-    // Address lines (right column) — decorative
-    const addrX = rightCenter + 20;
-    const addrMaxW = W - rightCenter - 50;
+    // --- Address column (right of divider) ---
+    // "To" name
+    if (toName) {
+      ctx.fillStyle = "#1A1A18";
+      ctx.font = "italic 15px Georgia, serif";
+      ctx.textAlign = "left";
+      ctx.fillText(toName, addrColX, stampY + stampSize + 45);
+    }
+
+    // Address lines
     ctx.strokeStyle = "#E8E4DE";
     ctx.lineWidth = 1;
+    const lineStartY = stampY + stampSize + 55;
     for (let i = 0; i < 4; i++) {
-      const ly = 200 + i * 40;
+      const ly = lineStartY + i * 35;
       ctx.beginPath();
-      ctx.moveTo(addrX, ly);
-      ctx.lineTo(addrX + addrMaxW, ly);
+      ctx.moveTo(addrColX, ly);
+      ctx.lineTo(addrColX + addrColW, ly);
       ctx.stroke();
     }
 
-    // "To" name on first line
-    if (toName) {
-      ctx.fillStyle = "#1A1A18";
-      ctx.font = "italic 16px 'DM Serif Display', Georgia, serif";
-      ctx.textAlign = "left";
-      ctx.fillText(toName, addrX + 5, 197);
-    }
-
-    // Address hint
-    ctx.fillStyle = "#D4CFC7";
-    ctx.font = "10px 'DM Sans', system-ui, sans-serif";
+    // Address text on bottom lines
+    ctx.fillStyle = "#C8C3BC";
+    ctx.font = "9px system-ui, sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText("Kentisbury Grange, North Devon", addrX + 5, 277);
-    ctx.fillText("EX31 4NL, England", addrX + 5, 317);
-
-    // Bottom branding
-    ctx.fillStyle = "#A3B899";
-    ctx.font = "9px 'DM Sans', system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("combelodge.co.uk", photoW + (W - photoW) / 2, H - 25);
-
-    // Photo overlay — location label
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    const labelW = 180;
-    const labelH = 32;
-    roundRect(ctx, 20, H - 52, labelW, labelH, 6);
-    ctx.fill();
-    ctx.fillStyle = "#F5F2ED";
-    ctx.font = "11px 'DM Sans', system-ui, sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText(`📍 Combe Lodge — ${PHOTOS[photo].label}`, 34, H - 31);
+    ctx.fillText("Kentisbury Grange", addrColX, lineStartY + 68);
+    ctx.fillText("North Devon, EX31 4NL", addrColX, lineStartY + 103);
 
     setGenerating(false);
   }, [photo, message, fromName, toName]);
@@ -268,8 +270,8 @@ export default function PostcardPage() {
                       style={{ backgroundImage: `url('${PHOTOS[photo].src}')` }}
                     />
                     {/* Location badge */}
-                    <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-dark-overlay/60 backdrop-blur-sm text-light-text/90 text-xs font-sans px-3 py-1.5 rounded-lg">
-                      <span>📍</span> Combe Lodge — {PHOTOS[photo].label}
+                    <div className="absolute bottom-3 left-3 bg-dark-overlay/55 backdrop-blur-sm text-light-text/90 text-[11px] font-sans px-3 py-1.5 rounded-lg">
+                      Combe Lodge at Kentisbury Grange
                     </div>
                     {/* Flip hint */}
                     <div className="absolute top-3 right-3 bg-dark-overlay/40 backdrop-blur-sm text-light-text/60 text-[10px] font-mono px-2 py-1 rounded-md">
@@ -282,34 +284,35 @@ export default function PostcardPage() {
                     className="absolute inset-0 aspect-[3/2] rounded-xl overflow-hidden shadow-2xl shadow-dark/15 border-2 border-white bg-[#FAF8F5]"
                     style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
                   >
-                    <div className="h-full p-6 md:p-8 flex flex-col">
+                    <div className="h-full p-5 md:p-7 flex flex-col">
                       {/* Header */}
-                      <p className="font-mono text-[9px] tracking-[0.4em] uppercase text-dark/30 text-center mb-4">
+                      <p className="font-mono text-[8px] tracking-[0.4em] uppercase text-dark/25 text-center mb-1">
                         POST CARD
                       </p>
+                      <div className="h-px bg-dark/8 mb-3" />
 
-                      <div className="flex-1 grid grid-cols-2 gap-4">
+                      <div className="flex-1 grid grid-cols-2 gap-0">
                         {/* Left — message */}
-                        <div className="flex flex-col justify-between border-r border-dark/8 pr-4">
-                          <p className="font-serif italic text-sm md:text-base text-dark/80 leading-relaxed">
+                        <div className="flex flex-col border-r border-dark/8 pr-4">
+                          <p className="font-serif italic text-sm text-dark/75 leading-relaxed">
                             &ldquo;{message || "Wish you were here!"}&rdquo;
                           </p>
                           {fromName && (
-                            <p className="font-serif text-sm text-dark mt-4">— {fromName}</p>
+                            <p className="font-serif text-sm text-dark mt-3">&mdash; {fromName}</p>
                           )}
                         </div>
 
                         {/* Right — address */}
-                        <div className="flex flex-col justify-between pl-2">
+                        <div className="flex flex-col justify-between pl-4">
                           {/* Stamp */}
-                          <div className="self-end border border-dashed border-dark/15 rounded-sm px-3 py-2 text-center">
-                            <p className="font-mono text-[8px] text-sage tracking-wider">COMBE</p>
-                            <p className="font-mono text-[8px] text-sage tracking-wider">LODGE</p>
-                            <p className="text-sm mt-0.5">🏡</p>
+                          <div className="self-end border border-dashed border-dark/12 rounded-sm px-2.5 py-1.5 text-center">
+                            <p className="font-mono text-[7px] text-sage font-bold tracking-wider leading-tight">COMBE</p>
+                            <p className="font-mono text-[7px] text-sage font-bold tracking-wider leading-tight">LODGE</p>
+                            <p className="font-mono text-[6px] text-wheat mt-0.5">EST. 2024</p>
                           </div>
 
                           {/* Address lines */}
-                          <div className="space-y-3 mt-4">
+                          <div className="space-y-2.5 mt-3">
                             {toName ? (
                               <p className="font-serif italic text-sm text-dark border-b border-dark/10 pb-1">{toName}</p>
                             ) : (
@@ -319,7 +322,7 @@ export default function PostcardPage() {
                             <div className="border-b border-dark/10 pb-1 h-5" />
                           </div>
 
-                          <p className="font-mono text-[8px] text-dark/20 mt-3">
+                          <p className="font-mono text-[7px] text-dark/18 mt-2">
                             Kentisbury Grange, North Devon
                           </p>
                         </div>
@@ -449,7 +452,7 @@ export default function PostcardPage() {
 }
 
 // Canvas helpers
-function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) {
+function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number): number {
   const words = text.split(" ");
   let line = "";
   let cy = y;
@@ -465,6 +468,7 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
     }
   }
   ctx.fillText(line.trim(), x, cy);
+  return cy; // return final Y so caller knows where text ended
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
