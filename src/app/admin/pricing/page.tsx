@@ -22,10 +22,10 @@ export default function PricingPage() {
   const [editingSeasonId, setEditingSeasonId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<Partial<SeasonalPricing>>({});
 
-  const [newDiscount, setNewDiscount] = useState<Partial<DiscountPeriod>>({});
   const [showAddDiscount, setShowAddDiscount] = useState(false);
   const [editingDiscountId, setEditingDiscountId] = useState<string | null>(null);
   const [editDiscountDraft, setEditDiscountDraft] = useState<Partial<DiscountPeriod>>({});
+  const [newDiscount, setNewDiscount] = useState<Partial<DiscountPeriod>>({ enabled: true });
 
   useEffect(() => {
     fetch("/api/admin/config")
@@ -121,28 +121,35 @@ export default function PricingPage() {
 
   const deleteDiscount = (id: string) => {
     if (!pricing) return;
+    const updated = { ...pricing, discountPeriods: (pricing.discountPeriods || []).filter((d) => d.id !== id) };
+    setPricing(updated);
+    save(updated);
+  };
+
+  const toggleDiscount = (id: string) => {
+    if (!pricing) return;
     const updated = {
       ...pricing,
-      discountPeriods: (pricing.discountPeriods || []).filter((d) => d.id !== id),
+      discountPeriods: (pricing.discountPeriods || []).map((d) =>
+        d.id === id ? { ...d, enabled: !d.enabled } : d
+      ),
     };
     setPricing(updated);
     save(updated);
   };
 
   const startEditDiscount = (discount: DiscountPeriod) => {
-    setEditingDiscountId(discount.id || discount.name);
+    setEditingDiscountId(discount.id);
     setEditDiscountDraft({ ...discount });
     setDirty(true);
   };
 
   const saveEditDiscount = () => {
-    if (!pricing || !editDiscountDraft.name || !editDiscountDraft.startDate || !editDiscountDraft.endDate || !editDiscountDraft.discountPercent) return;
+    if (!pricing || !editDiscountDraft.name || !editDiscountDraft.discountPercent) return;
     const updated = {
       ...pricing,
       discountPeriods: (pricing.discountPeriods || []).map((d) =>
-        (d.id || d.name) === editingDiscountId
-          ? { ...d, name: editDiscountDraft.name!, startDate: editDiscountDraft.startDate!, endDate: editDiscountDraft.endDate!, discountPercent: Number(editDiscountDraft.discountPercent) }
-          : d
+        d.id === editingDiscountId ? { ...d, ...editDiscountDraft, discountPercent: Number(editDiscountDraft.discountPercent), minNights: editDiscountDraft.minNights ? Number(editDiscountDraft.minNights) : undefined } : d
       ),
     };
     setPricing(updated);
@@ -152,20 +159,19 @@ export default function PricingPage() {
   };
 
   const addDiscount = () => {
-    if (!pricing || !newDiscount.name || !newDiscount.startDate || !newDiscount.endDate || !newDiscount.discountPercent) return;
+    if (!pricing || !newDiscount.name || !newDiscount.discountPercent) return;
     const discount: DiscountPeriod = {
       id: Date.now().toString(),
       name: newDiscount.name,
-      startDate: newDiscount.startDate,
-      endDate: newDiscount.endDate,
       discountPercent: Number(newDiscount.discountPercent),
+      minNights: newDiscount.minNights ? Number(newDiscount.minNights) : undefined,
+      startDate: newDiscount.startDate || undefined,
+      endDate: newDiscount.endDate || undefined,
+      enabled: true,
     };
-    const updated = {
-      ...pricing,
-      discountPeriods: [...(pricing.discountPeriods || []), discount],
-    };
+    const updated = { ...pricing, discountPeriods: [...(pricing.discountPeriods || []), discount] };
     setPricing(updated);
-    setNewDiscount({});
+    setNewDiscount({ enabled: true });
     setShowAddDiscount(false);
     save(updated);
   };
@@ -382,7 +388,7 @@ export default function PricingPage() {
       {/* Discount periods */}
       <Card title="Discount Periods" className="mt-5">
         <p className="font-sans text-xs text-dark/40 mb-4">
-          Discounts apply a percentage off the total (accommodation + cleaning fee). Shown to guests as a crossed-out price on the booking page.
+          Discounts apply a percentage off the total (accommodation + cleaning fee). Shown to guests as a crossed-out price on the booking page. Leave dates blank to apply to all bookings.
         </p>
 
         {(pricing.discountPeriods || []).length === 0 && (
@@ -391,38 +397,88 @@ export default function PricingPage() {
 
         <div className="space-y-2 mb-4">
           {(pricing.discountPeriods || []).map((discount) => {
-            const id = discount.id || discount.name;
-            const isEditing = editingDiscountId === id;
+            const isEditing = editingDiscountId === discount.id;
 
             if (isEditing) {
               return (
-                <div key={id} className="border border-amber-200 rounded-lg p-4 space-y-3 bg-amber-50/50">
+                <div key={discount.id} className="border border-sage/30 rounded-lg p-4 space-y-3 bg-sage/5">
                   <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-dark/40">Editing Discount</p>
                   <div className="grid grid-cols-2 gap-3">
                     <InlineField label="Name" value={editDiscountDraft.name || ""} onChange={(v) => setEditDiscountDraft((d) => ({ ...d, name: v }))} className="col-span-2" placeholder="e.g. Spring Offer" />
-                    <InlineField label="Start date" type="date" value={editDiscountDraft.startDate || ""} onChange={(v) => setEditDiscountDraft((d) => ({ ...d, startDate: v }))} />
-                    <InlineField label="End date" type="date" value={editDiscountDraft.endDate || ""} onChange={(v) => setEditDiscountDraft((d) => ({ ...d, endDate: v }))} />
-                    <InlineField label="Discount %" type="number" value={editDiscountDraft.discountPercent ? String(editDiscountDraft.discountPercent) : ""} onChange={(v) => setEditDiscountDraft((d) => ({ ...d, discountPercent: parseFloat(v) }))} placeholder="e.g. 15" className="col-span-2" />
+                    <InlineField label="Discount %" type="number" value={editDiscountDraft.discountPercent ? String(editDiscountDraft.discountPercent) : ""} onChange={(v) => setEditDiscountDraft((d) => ({ ...d, discountPercent: parseFloat(v) }))} placeholder="e.g. 15" />
+                    <InlineField label="Min nights (optional)" type="number" value={editDiscountDraft.minNights ? String(editDiscountDraft.minNights) : ""} onChange={(v) => setEditDiscountDraft((d) => ({ ...d, minNights: v ? parseInt(v) : undefined }))} placeholder="e.g. 7" />
+                    <InlineField label="Start date (optional)" type="date" value={editDiscountDraft.startDate || ""} onChange={(v) => setEditDiscountDraft((d) => ({ ...d, startDate: v || undefined }))} />
+                    <InlineField label="End date (optional)" type="date" value={editDiscountDraft.endDate || ""} onChange={(v) => setEditDiscountDraft((d) => ({ ...d, endDate: v || undefined }))} />
                   </div>
                   <div className="flex gap-2 pt-1">
                     <button onClick={saveEditDiscount} className="px-4 py-2 rounded-lg bg-moss text-light-text font-sans text-xs font-medium hover:bg-moss-light transition-colors">Save changes</button>
                     <button onClick={() => { setEditingDiscountId(null); setEditDiscountDraft({}); }} className="px-4 py-2 rounded-lg border border-dark/10 text-dark/50 font-sans text-xs hover:border-dark/20 transition-colors">Cancel</button>
-                    <button onClick={() => { setEditingDiscountId(null); deleteDiscount(id); }} className="ml-auto px-4 py-2 rounded-lg text-red-400 font-sans text-xs hover:text-red-600 transition-colors">Delete</button>
+                    <button onClick={() => { setEditingDiscountId(null); deleteDiscount(discount.id); }} className="ml-auto px-4 py-2 rounded-lg text-red-400 font-sans text-xs hover:text-red-600 transition-colors">Delete</button>
                   </div>
                 </div>
               );
             }
 
             return (
-              <div key={id} className="flex items-center justify-between p-3 rounded-lg bg-amber-50/60 border border-amber-200/60 hover:border-amber-300/60 transition-colors">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[9px] tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">{discount.discountPercent}% off</span>
+              <div
+                key={discount.id}
+                className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                  discount.enabled
+                    ? "bg-sage/5 border-sage/20 hover:border-sage/35"
+                    : "bg-dark/3 border-dark/8 opacity-50"
+                }`}
+              >
+                {/* Toggle */}
+                <button
+                  onClick={() => toggleDiscount(discount.id)}
+                  title={discount.enabled ? "Disable" : "Enable"}
+                  className={`relative flex-shrink-0 w-8 h-4.5 rounded-full transition-colors ${
+                    discount.enabled ? "bg-moss" : "bg-dark/20"
+                  }`}
+                  style={{ width: 32, height: 18 }}
+                >
+                  <span
+                    className="absolute top-0.5 rounded-full bg-white shadow transition-transform"
+                    style={{
+                      width: 14,
+                      height: 14,
+                      left: 2,
+                      transform: discount.enabled ? "translateX(14px)" : "translateX(0)",
+                    }}
+                  />
+                </button>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-[9px] tracking-wide px-1.5 py-0.5 rounded bg-moss/15 text-moss font-bold">
+                      {discount.discountPercent}% off
+                    </span>
                     <span className="font-sans text-sm text-dark font-medium">{discount.name}</span>
+                    {discount.minNights && (
+                      <span className="font-mono text-[9px] tracking-wide px-1.5 py-0.5 rounded bg-dark/8 text-dark/50">
+                        {discount.minNights}+ nights
+                      </span>
+                    )}
+                    {!discount.enabled && (
+                      <span className="font-mono text-[9px] tracking-wide px-1.5 py-0.5 rounded bg-dark/8 text-dark/40">
+                        disabled
+                      </span>
+                    )}
                   </div>
-                  <div className="font-mono text-[10px] text-dark/35 mt-0.5">{discount.startDate} → {discount.endDate}</div>
+                  <div className="font-mono text-[10px] text-dark/35 mt-0.5">
+                    {discount.startDate || discount.endDate
+                      ? `${discount.startDate ? discount.startDate : "any start"} → ${discount.endDate ? discount.endDate : "any end"}`
+                      : "All dates"}
+                  </div>
                 </div>
-                <button onClick={() => startEditDiscount(discount)} className="text-dark/30 hover:text-moss transition-colors font-sans text-xs px-2 py-1">Edit</button>
+
+                <button
+                  onClick={() => startEditDiscount(discount)}
+                  className="flex-shrink-0 text-dark/30 hover:text-moss transition-colors font-sans text-xs px-2 py-1"
+                >
+                  Edit
+                </button>
               </div>
             );
           })}
@@ -430,21 +486,22 @@ export default function PricingPage() {
 
         {showAddDiscount ? (
           <div className="border border-dark/8 rounded-lg p-4 space-y-3">
-            <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-dark/40">New Discount Period</p>
+            <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-dark/40">New Discount</p>
             <div className="grid grid-cols-2 gap-3">
               <InlineField label="Name" value={newDiscount.name || ""} onChange={(v) => setNewDiscount((s) => ({ ...s, name: v }))} placeholder="e.g. Early Bird Spring" className="col-span-2" />
-              <InlineField label="Start date" type="date" value={newDiscount.startDate || ""} onChange={(v) => setNewDiscount((s) => ({ ...s, startDate: v }))} />
-              <InlineField label="End date" type="date" value={newDiscount.endDate || ""} onChange={(v) => setNewDiscount((s) => ({ ...s, endDate: v }))} />
-              <InlineField label="Discount %" type="number" value={newDiscount.discountPercent ? String(newDiscount.discountPercent) : ""} onChange={(v) => setNewDiscount((s) => ({ ...s, discountPercent: parseFloat(v) }))} placeholder="e.g. 10" className="col-span-2" />
+              <InlineField label="Discount %" type="number" value={newDiscount.discountPercent ? String(newDiscount.discountPercent) : ""} onChange={(v) => setNewDiscount((s) => ({ ...s, discountPercent: parseFloat(v) }))} placeholder="e.g. 10" />
+              <InlineField label="Min nights (optional)" type="number" value={newDiscount.minNights ? String(newDiscount.minNights) : ""} onChange={(v) => setNewDiscount((s) => ({ ...s, minNights: v ? parseInt(v) : undefined }))} placeholder="e.g. 7" />
+              <InlineField label="Start date (optional)" type="date" value={newDiscount.startDate || ""} onChange={(v) => setNewDiscount((s) => ({ ...s, startDate: v || undefined }))} />
+              <InlineField label="End date (optional)" type="date" value={newDiscount.endDate || ""} onChange={(v) => setNewDiscount((s) => ({ ...s, endDate: v || undefined }))} />
             </div>
             <div className="flex gap-2 pt-1">
               <button onClick={addDiscount} className="px-4 py-2 rounded-lg bg-moss text-light-text font-sans text-xs font-medium hover:bg-moss-light transition-colors">Add Discount</button>
-              <button onClick={() => { setShowAddDiscount(false); setNewDiscount({}); }} className="px-4 py-2 rounded-lg border border-dark/10 text-dark/50 font-sans text-xs hover:border-dark/20 transition-colors">Cancel</button>
+              <button onClick={() => { setShowAddDiscount(false); setNewDiscount({ enabled: true }); }} className="px-4 py-2 rounded-lg border border-dark/10 text-dark/50 font-sans text-xs hover:border-dark/20 transition-colors">Cancel</button>
             </div>
           </div>
         ) : (
           <button onClick={() => setShowAddDiscount(true)} className="flex items-center gap-2 text-moss font-sans text-xs font-medium hover:text-moss-light transition-colors">
-            <span className="text-base leading-none">+</span> Add discount period
+            <span className="text-base leading-none">+</span> Add discount
           </button>
         )}
       </Card>
