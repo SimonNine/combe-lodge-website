@@ -8,24 +8,35 @@ export interface GuestbookEntry {
   stay_end: string | null;
   message: string;
   rating: number;
-  image_urls: string[];
+  image_urls: string; // JSON string of URL array
   status: "pending" | "approved" | "rejected" | "trash" | "draft";
   is_admin_entry: boolean;
   trashed_at: string | null;
   created_at: string;
 }
 
+function parseImageUrls(entry: GuestbookEntry): string[] {
+  try { return JSON.parse(entry.image_urls || "[]"); } catch { return []; }
+}
+
+// Parse image_urls for all entries in a result set
+function withParsedImages(entries: GuestbookEntry[]) {
+  return entries.map((e) => ({ ...e, image_urls: parseImageUrls(e) }));
+}
+
 export async function createGuestbookTable() {
+  // Drop old table if it exists (safe — feature is brand new, no real data yet)
+  await sql`DROP TABLE IF EXISTS guestbook_entries`;
   await sql`
-    CREATE TABLE IF NOT EXISTS guestbook_entries (
+    CREATE TABLE guestbook_entries (
       id SERIAL PRIMARY KEY,
       name VARCHAR(100) NOT NULL,
       location VARCHAR(150),
       stay_start DATE,
       stay_end DATE,
       message TEXT NOT NULL,
-      rating INTEGER DEFAULT 5 CHECK (rating >= 1 AND rating <= 5),
-      image_urls TEXT[] DEFAULT '{}',
+      rating INTEGER DEFAULT 5,
+      image_urls TEXT DEFAULT '[]',
       status VARCHAR(20) DEFAULT 'pending',
       is_admin_entry BOOLEAN DEFAULT FALSE,
       trashed_at TIMESTAMP,
@@ -35,31 +46,31 @@ export async function createGuestbookTable() {
   `;
 }
 
-export async function getApprovedEntries(): Promise<GuestbookEntry[]> {
+export async function getApprovedEntries() {
   const result = await sql<GuestbookEntry>`
     SELECT * FROM guestbook_entries
     WHERE status = 'approved'
     ORDER BY created_at DESC
   `;
-  return result.rows;
+  return withParsedImages(result.rows);
 }
 
-export async function getEntriesByStatus(status: string): Promise<GuestbookEntry[]> {
+export async function getEntriesByStatus(status: string) {
   const result = await sql<GuestbookEntry>`
     SELECT * FROM guestbook_entries
     WHERE status = ${status}
     ORDER BY created_at DESC
   `;
-  return result.rows;
+  return withParsedImages(result.rows);
 }
 
-export async function getAdminEntries(): Promise<GuestbookEntry[]> {
+export async function getAdminEntries() {
   const result = await sql<GuestbookEntry>`
     SELECT * FROM guestbook_entries
     WHERE is_admin_entry = TRUE
     ORDER BY created_at DESC
   `;
-  return result.rows;
+  return withParsedImages(result.rows);
 }
 
 export async function createEntry(entry: {
@@ -73,6 +84,8 @@ export async function createEntry(entry: {
   isAdmin?: boolean;
   status?: string;
 }): Promise<GuestbookEntry> {
+  const imgJson = JSON.stringify(entry.imageUrls || []);
+
   const result = await sql<GuestbookEntry>`
     INSERT INTO guestbook_entries (name, location, stay_start, stay_end, message, rating, image_urls, is_admin_entry, status)
     VALUES (
@@ -82,7 +95,7 @@ export async function createEntry(entry: {
       ${entry.stayEnd || null},
       ${entry.message},
       ${entry.rating},
-      ${entry.imageUrls ? `{${entry.imageUrls.map(u => `"${u}"`).join(",")}}` : "{}"}::TEXT[],
+      ${imgJson},
       ${entry.isAdmin || false},
       ${entry.status || "pending"}
     )

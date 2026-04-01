@@ -5,15 +5,20 @@ export const dynamic = "force-dynamic";
 
 // GET — admin: returns entries by status or admin's own
 export async function GET(req: NextRequest) {
-  const status = req.nextUrl.searchParams.get("status") || "pending";
+  try {
+    const status = req.nextUrl.searchParams.get("status") || "pending";
 
-  if (status === "admin") {
-    const entries = await getAdminEntries();
+    if (status === "admin") {
+      const entries = await getAdminEntries();
+      return NextResponse.json({ entries });
+    }
+
+    const entries = await getEntriesByStatus(status);
     return NextResponse.json({ entries });
+  } catch (err) {
+    console.error("Guestbook admin GET error:", err);
+    return NextResponse.json({ entries: [], error: String(err) }, { status: 200 });
   }
-
-  const entries = await getEntriesByStatus(status);
-  return NextResponse.json({ entries });
 }
 
 // POST — admin: create own testimonial or update entry status

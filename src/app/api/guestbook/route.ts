@@ -5,8 +5,13 @@ export const dynamic = "force-dynamic";
 
 // GET — public: returns approved entries
 export async function GET() {
-  const entries = await getApprovedEntries();
-  return NextResponse.json({ entries });
+  try {
+    const entries = await getApprovedEntries();
+    return NextResponse.json({ entries });
+  } catch (err) {
+    console.error("Guestbook GET error:", err);
+    return NextResponse.json({ entries: [] });
+  }
 }
 
 // POST — public: submit a new entry (goes to pending)
