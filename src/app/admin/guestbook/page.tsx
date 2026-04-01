@@ -56,7 +56,7 @@ export default function AdminGuestbookPage() {
     loadCounts();
   };
 
-  const createEntry = async (form: { name: string; location: string; message: string; rating: number; publish: boolean }) => {
+  const createEntry = async (form: { name: string; location: string; stayStart: string; stayEnd: string; message: string; rating: number; publish: boolean }) => {
     await fetch("/api/guestbook/admin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -144,6 +144,7 @@ export default function AdminGuestbookPage() {
                   <p className="font-sans font-light text-sm text-dark/60 mt-2 line-clamp-3">{entry.message}</p>
                   <p className="font-mono text-[10px] text-dark/25 mt-2">
                     {new Date(entry.created_at).toLocaleDateString("en-GB")}
+                    {entry.stay_start && ` · Stayed ${new Date(entry.stay_start).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}`}
                     {entry.trashed_at && ` · Trashed ${new Date(entry.trashed_at).toLocaleDateString("en-GB")}`}
                   </p>
                 </div>
@@ -197,10 +198,10 @@ function ActionBtn({ label, onClick, color }: { label: string; onClick: () => vo
 }
 
 function CreateForm({ onSubmit, onCancel }: {
-  onSubmit: (form: { name: string; location: string; message: string; rating: number; publish: boolean }) => void;
+  onSubmit: (form: { name: string; location: string; stayStart: string; stayEnd: string; message: string; rating: number; publish: boolean }) => void;
   onCancel: () => void;
 }) {
-  const [form, setForm] = useState({ name: "", location: "", message: "", rating: 5, publish: false });
+  const [form, setForm] = useState({ name: "", location: "", stayStart: "", stayEnd: "", message: "", rating: 5, publish: false });
   const set = (field: string, value: string | number | boolean) => setForm((f) => ({ ...f, [field]: value }));
 
   return (
@@ -214,6 +215,14 @@ function CreateForm({ onSubmit, onCancel }: {
         <div>
           <label className="font-mono text-[9px] tracking-[0.12em] uppercase text-dark/35 block mb-1">Location</label>
           <input value={form.location} onChange={(e) => set("location", e.target.value)} className="w-full p-2 rounded-lg border border-dark/10 font-sans text-sm bg-transparent focus:outline-none focus:border-sage" placeholder="e.g. London" />
+        </div>
+        <div>
+          <label className="font-mono text-[9px] tracking-[0.12em] uppercase text-dark/35 block mb-1">Stay from</label>
+          <input type="date" value={form.stayStart} onChange={(e) => set("stayStart", e.target.value)} className="w-full p-2 rounded-lg border border-dark/10 font-sans text-sm bg-transparent focus:outline-none focus:border-sage" />
+        </div>
+        <div>
+          <label className="font-mono text-[9px] tracking-[0.12em] uppercase text-dark/35 block mb-1">Stay to</label>
+          <input type="date" value={form.stayEnd} onChange={(e) => set("stayEnd", e.target.value)} className="w-full p-2 rounded-lg border border-dark/10 font-sans text-sm bg-transparent focus:outline-none focus:border-sage" />
         </div>
       </div>
       <div>
