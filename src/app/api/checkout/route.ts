@@ -49,11 +49,27 @@ export async function POST(req: NextRequest) {
       quantity: 1,
     });
 
+    // If a discount applies, create a one-time Stripe coupon for the exact discount amount
+    // so Stripe charges the correct discounted total (line items stay at full price for transparency)
+    let discountParam: { discounts: { coupon: string }[] } | Record<string, never> = {};
+    if (pricing.discount && pricing.undiscountedTotal > pricing.total) {
+      const discountAmountPence = pricing.undiscountedTotal - pricing.total;
+      const coupon = await stripe.coupons.create({
+        amount_off: discountAmountPence,
+        currency: "gbp",
+        duration: "once",
+        name: `${pricing.discount.name} (${pricing.discount.discountPercent}% off)`,
+        max_redemptions: 1,
+      });
+      discountParam = { discounts: [{ coupon: coupon.id }] };
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
       customer_email: guestEmail,
       line_items: lineItems,
+      ...discountParam,
       metadata: {
         checkIn,
         checkOut,
