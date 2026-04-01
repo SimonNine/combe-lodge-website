@@ -56,18 +56,30 @@ export async function getApprovedEntries() {
 }
 
 export async function getEntriesByStatus(status: string) {
+  if (status === "trash") {
+    // Trash shows ALL trashed entries (guest + admin)
+    const result = await sql<GuestbookEntry>`
+      SELECT * FROM guestbook_entries
+      WHERE status = 'trash'
+      ORDER BY trashed_at DESC
+    `;
+    return withParsedImages(result.rows);
+  }
+
+  // Non-trash tabs exclude trashed entries
   const result = await sql<GuestbookEntry>`
     SELECT * FROM guestbook_entries
-    WHERE status = ${status}
+    WHERE status = ${status} AND (status != 'trash')
     ORDER BY created_at DESC
   `;
   return withParsedImages(result.rows);
 }
 
 export async function getAdminEntries() {
+  // Only show admin entries that aren't trashed
   const result = await sql<GuestbookEntry>`
     SELECT * FROM guestbook_entries
-    WHERE is_admin_entry = TRUE
+    WHERE is_admin_entry = TRUE AND status != 'trash'
     ORDER BY created_at DESC
   `;
   return withParsedImages(result.rows);
