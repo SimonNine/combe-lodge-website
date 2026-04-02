@@ -154,7 +154,7 @@ export default function StarMap() {
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (!active) {
-      timerRef.current = setTimeout(() => setActive(true), 5000);
+      timerRef.current = setTimeout(() => setActive(true), 90000);
     }
   }, [active]);
 
@@ -173,7 +173,7 @@ export default function StarMap() {
     window.addEventListener("keydown", handleKey);
 
     if (!active) {
-      timerRef.current = setTimeout(() => setActive(true), 5000);
+      timerRef.current = setTimeout(() => setActive(true), 90000);
     }
 
     return () => {
