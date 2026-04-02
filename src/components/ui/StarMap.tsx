@@ -64,28 +64,26 @@ const STARS: [string, number, number, number, string][] = [
   ["Alpheratz", 0.140, 29.09, 2.07, "Andromeda"],
 ];
 
-// Constellation line connections (by star name pairs)
-const CONSTELLATION_LINES: [string, string][] = [
-  // Orion
-  ["Betelgeuse", "Bellatrix"], ["Betelgeuse", "Alnilam"], ["Bellatrix", "Mintaka"],
-  ["Alnilam", "Alnitak"], ["Alnilam", "Mintaka"], ["Alnitak", "Rigel"], ["Mintaka", "Rigel"],
-  // Ursa Major (Big Dipper)
-  ["Dubhe", "Merak"], ["Merak", "Phecda"], ["Phecda", "Megrez"],
-  ["Megrez", "Alioth"], ["Alioth", "Mizar"], ["Mizar", "Alkaid"],
-  ["Megrez", "Dubhe"],
-  // Cassiopeia
-  ["Schedar", "Caph"], ["Schedar", "Navi"], ["Navi", "Ruchbah"], ["Ruchbah", "Segin"],
-  // Gemini
-  ["Castor", "Pollux"],
-  // Leo
-  ["Regulus", "Denebola"],
-  // Cygnus
-  ["Deneb", "Vega"],
-  // Andromeda
-  ["Alpheratz", "Mirach"], ["Mirach", "Almach"],
-  // Summer Triangle
-  ["Vega", "Altair"], ["Altair", "Deneb"],
-];
+// Constellation line connections grouped by constellation name
+const CONSTELLATION_LINES: Record<string, [string, string][]> = {
+  "Orion": [
+    ["Betelgeuse", "Bellatrix"], ["Betelgeuse", "Alnilam"], ["Bellatrix", "Mintaka"],
+    ["Alnilam", "Alnitak"], ["Alnilam", "Mintaka"], ["Alnitak", "Rigel"], ["Mintaka", "Rigel"],
+  ],
+  "Ursa Major": [
+    ["Dubhe", "Merak"], ["Merak", "Phecda"], ["Phecda", "Megrez"],
+    ["Megrez", "Alioth"], ["Alioth", "Mizar"], ["Mizar", "Alkaid"],
+    ["Megrez", "Dubhe"],
+  ],
+  "Cassiopeia": [
+    ["Schedar", "Caph"], ["Schedar", "Navi"], ["Navi", "Ruchbah"], ["Ruchbah", "Segin"],
+  ],
+  "Gemini": [["Castor", "Pollux"]],
+  "Leo": [["Regulus", "Denebola"]],
+  "Cygnus": [["Deneb", "Vega"]],
+  "Andromeda": [["Alpheratz", "Mirach"], ["Mirach", "Almach"]],
+  "Summer Triangle": [["Vega", "Altair"], ["Altair", "Deneb"]],
+};
 
 interface StarPos {
   name: string;
@@ -143,25 +141,47 @@ export default function StarMap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
   const starsRef = useRef<StarPos[]>([]);
+  const hoveredRef = useRef<StarPos | null>(null);
+
+  // Keep hoveredRef in sync
+  useEffect(() => { hoveredRef.current = hovered; }, [hovered]);
+
+  const close = useCallback(() => {
+    setActive(false);
+    setHovered(null);
+  }, []);
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    if (active) {
-      setActive(false);
-      return;
+    if (!active) {
+      timerRef.current = setTimeout(() => setActive(true), 5000);
     }
-    timerRef.current = setTimeout(() => setActive(true), 5000);
   }, [active]);
 
+  // Idle detection — only scroll/keydown/touchstart reset the timer (NOT mousemove)
   useEffect(() => {
-    const events = ["mousemove", "mousedown", "keydown", "scroll", "touchstart"];
-    events.forEach((e) => window.addEventListener(e, resetTimer));
-    timerRef.current = setTimeout(() => setActive(true), 5000);
+    const events = ["keydown", "scroll", "touchstart"];
+    const handler = () => {
+      if (!active) resetTimer();
+    };
+    events.forEach((e) => window.addEventListener(e, handler));
+
+    // Escape key closes
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && active) close();
+    };
+    window.addEventListener("keydown", handleKey);
+
+    if (!active) {
+      timerRef.current = setTimeout(() => setActive(true), 5000);
+    }
+
     return () => {
-      events.forEach((e) => window.removeEventListener(e, resetTimer));
+      events.forEach((e) => window.removeEventListener(e, handler));
+      window.removeEventListener("keydown", handleKey);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [resetTimer]);
+  }, [active, resetTimer, close]);
 
   const computeStars = useCallback((w: number, h: number) => {
     const lst = localSiderealTime(new Date());
@@ -185,8 +205,10 @@ export default function StarMap() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
+    let twinkleFrame = 0;
 
     const render = () => {
+      twinkleFrame++;
       const w = window.innerWidth;
       const h = window.innerHeight;
       canvas.width = w;
@@ -196,66 +218,152 @@ export default function StarMap() {
       starsRef.current = computed;
       setStars(computed);
 
-      // Background
-      const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.7);
-      grad.addColorStop(0, "#0a0e1a");
-      grad.addColorStop(1, "#020408");
+      const currentHovered = hoveredRef.current;
+
+      // Background — deeper space gradient
+      const grad = ctx.createRadialGradient(w / 2, h * 0.4, 0, w / 2, h / 2, Math.max(w, h) * 0.8);
+      grad.addColorStop(0, "#080c18");
+      grad.addColorStop(0.5, "#050810");
+      grad.addColorStop(1, "#020306");
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
 
-      // Subtle horizon glow
-      const hGrad = ctx.createLinearGradient(0, h * 0.85, 0, h);
-      hGrad.addColorStop(0, "transparent");
-      hGrad.addColorStop(1, "rgba(44, 74, 53, 0.08)");
-      ctx.fillStyle = hGrad;
-      ctx.fillRect(0, h * 0.85, w, h * 0.15);
+      // Faint milky way band (very subtle diagonal glow)
+      const mwGrad = ctx.createLinearGradient(0, 0, w, h);
+      mwGrad.addColorStop(0, "transparent");
+      mwGrad.addColorStop(0.35, "rgba(180, 190, 210, 0.015)");
+      mwGrad.addColorStop(0.5, "rgba(180, 190, 210, 0.025)");
+      mwGrad.addColorStop(0.65, "rgba(180, 190, 210, 0.015)");
+      mwGrad.addColorStop(1, "transparent");
+      ctx.fillStyle = mwGrad;
+      ctx.fillRect(0, 0, w, h);
 
-      // Constellation lines
+      // Horizon glow
+      const hGrad = ctx.createLinearGradient(0, h * 0.88, 0, h);
+      hGrad.addColorStop(0, "transparent");
+      hGrad.addColorStop(1, "rgba(44, 74, 53, 0.06)");
+      ctx.fillStyle = hGrad;
+      ctx.fillRect(0, h * 0.88, w, h * 0.12);
+
+      // Build visible star lookup for constellation lines
       const starMap = new Map(computed.map((s) => [s.name, s]));
-      ctx.lineWidth = 0.5;
-      for (const [a, b] of CONSTELLATION_LINES) {
-        const sa = starMap.get(a);
-        const sb = starMap.get(b);
-        if (!sa || !sb) continue;
-        ctx.beginPath();
-        ctx.moveTo(sa.x, sa.y);
-        ctx.lineTo(sb.x, sb.y);
-        ctx.strokeStyle = "rgba(163, 184, 153, 0.12)";
-        ctx.stroke();
+
+      // Constellation lines — only draw for hovered star's constellation
+      if (currentHovered) {
+        const cName = currentHovered.constellation;
+        // Also check "Summer Triangle" if the star is part of it
+        const constellations = [cName];
+        const triStars = ["Vega", "Altair", "Deneb"];
+        if (triStars.includes(currentHovered.name)) constellations.push("Summer Triangle");
+
+        for (const cn of constellations) {
+          const lines = CONSTELLATION_LINES[cn];
+          if (!lines) continue;
+
+          for (const [a, b] of lines) {
+            const sa = starMap.get(a);
+            const sb = starMap.get(b);
+            if (!sa || !sb) continue;
+            ctx.beginPath();
+            ctx.moveTo(sa.x, sa.y);
+            ctx.lineTo(sb.x, sb.y);
+            ctx.strokeStyle = "rgba(163, 184, 153, 0.35)";
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+          }
+
+          // Constellation label — place near the midpoint of the constellation
+          const cStars = computed.filter((s) => s.constellation === cn || (cn === "Summer Triangle" && triStars.includes(s.name)));
+          if (cStars.length > 1) {
+            const avgX = cStars.reduce((sum, s) => sum + s.x, 0) / cStars.length;
+            const avgY = cStars.reduce((sum, s) => sum + s.y, 0) / cStars.length;
+            ctx.fillStyle = "rgba(163, 184, 153, 0.45)";
+            ctx.font = "9px system-ui, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(cn.toUpperCase(), avgX, avgY - 14);
+          }
+        }
       }
 
       // Stars
       for (const star of computed) {
-        const size = Math.max(0.8, 3.5 - star.mag * 0.6);
-        const alpha = Math.max(0.3, 1 - star.mag * 0.15);
+        const isHovered = currentHovered?.name === star.name;
+        const isInConstellation = currentHovered && star.constellation === currentHovered.constellation;
+        const baseMag = star.mag;
+        const size = Math.max(1, 4 - baseMag * 0.7) * (isHovered ? 1.8 : isInConstellation ? 1.3 : 1);
+        const alpha = Math.max(0.4, 1 - baseMag * 0.12);
 
-        // Glow
-        const glow = ctx.createRadialGradient(star.x, star.y, 0, star.x, star.y, size * 4);
-        glow.addColorStop(0, `rgba(220, 230, 240, ${alpha * 0.15})`);
-        glow.addColorStop(1, "transparent");
-        ctx.fillStyle = glow;
-        ctx.fillRect(star.x - size * 4, star.y - size * 4, size * 8, size * 8);
+        // Twinkle — subtle brightness oscillation
+        const twinkle = 1 + Math.sin(twinkleFrame * 0.03 + star.x * 0.1 + star.y * 0.1) * 0.15;
 
-        // Star dot
+        // Outer glow (large, soft)
+        const outerR = size * (isHovered ? 12 : 6);
+        const outer = ctx.createRadialGradient(star.x, star.y, 0, star.x, star.y, outerR);
+        outer.addColorStop(0, `rgba(200, 215, 240, ${alpha * 0.12 * twinkle})`);
+        outer.addColorStop(0.4, `rgba(200, 215, 240, ${alpha * 0.04 * twinkle})`);
+        outer.addColorStop(1, "transparent");
+        ctx.fillStyle = outer;
+        ctx.fillRect(star.x - outerR, star.y - outerR, outerR * 2, outerR * 2);
+
+        // Inner glow (tighter, brighter)
+        const innerR = size * 3;
+        const inner = ctx.createRadialGradient(star.x, star.y, 0, star.x, star.y, innerR);
+        inner.addColorStop(0, `rgba(230, 240, 255, ${alpha * 0.3 * twinkle})`);
+        inner.addColorStop(1, "transparent");
+        ctx.fillStyle = inner;
+        ctx.fillRect(star.x - innerR, star.y - innerR, innerR * 2, innerR * 2);
+
+        // Star core — slightly blue-white tint
         ctx.beginPath();
         ctx.arc(star.x, star.y, size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(220, 230, 240, ${alpha})`;
+        ctx.fillStyle = isHovered
+          ? `rgba(255, 255, 255, 1)`
+          : `rgba(220, 230, 245, ${alpha * twinkle})`;
         ctx.fill();
+
+        // Diffraction spikes on bright stars (mag < 1)
+        if (baseMag < 1) {
+          const spikeLen = size * (isHovered ? 8 : 4);
+          const spikeAlpha = alpha * 0.12 * twinkle;
+          ctx.strokeStyle = `rgba(220, 230, 245, ${spikeAlpha})`;
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(star.x - spikeLen, star.y);
+          ctx.lineTo(star.x + spikeLen, star.y);
+          ctx.moveTo(star.x, star.y - spikeLen);
+          ctx.lineTo(star.x, star.y + spikeLen);
+          ctx.stroke();
+        }
+
+        // Star name label for hovered constellation members
+        if (isInConstellation && !isHovered) {
+          ctx.fillStyle = "rgba(200, 215, 235, 0.35)";
+          ctx.font = "8px system-ui, sans-serif";
+          ctx.textAlign = "left";
+          ctx.fillText(star.name, star.x + size + 6, star.y + 3);
+        }
       }
 
       // Cardinal directions
-      ctx.fillStyle = "rgba(163, 184, 153, 0.25)";
-      ctx.font = "10px system-ui, sans-serif";
+      ctx.fillStyle = "rgba(163, 184, 153, 0.35)";
+      ctx.font = "11px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("N", w / 2, 28);
-      ctx.fillText("S", w / 2, h - 16);
-      ctx.fillText("E", 20, h / 2 + 4);
-      ctx.fillText("W", w - 20, h / 2 + 4);
+      ctx.fillText("N", w / 2, 30);
+      ctx.fillText("S", w / 2, h - 18);
+      ctx.fillText("E", 22, h / 2 + 4);
+      ctx.fillText("W", w - 22, h / 2 + 4);
+
+      // Subtle horizon line
+      ctx.beginPath();
+      ctx.moveTo(0, h - 2);
+      ctx.lineTo(w, h - 2);
+      ctx.strokeStyle = "rgba(163, 184, 153, 0.08)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
 
       animRef.current = requestAnimationFrame(render);
     };
 
-    // Small delay so the fade-in starts on black
     setTimeout(() => {
       animRef.current = requestAnimationFrame(render);
     }, 100);
@@ -266,7 +374,7 @@ export default function StarMap() {
   // Mouse hover detection
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     setMousePos({ x: e.clientX, y: e.clientY });
-    const threshold = 18;
+    const threshold = 22;
     let closest: StarPos | null = null;
     let closestDist = Infinity;
     for (const star of starsRef.current) {
@@ -291,22 +399,33 @@ export default function StarMap() {
           transition={{ duration: 1.5 }}
           className="fixed inset-0 z-[100] cursor-crosshair"
           onMouseMove={handleMouseMove}
-          onClick={() => setActive(false)}
         >
           <canvas ref={canvasRef} className="absolute inset-0" />
+
+          {/* Exit button — top right */}
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1 }}
+            onClick={close}
+            className="absolute top-6 right-6 z-[102] flex items-center gap-2 px-4 py-2 rounded-lg border border-white/15 bg-white/5 backdrop-blur-sm text-white/50 hover:text-white/80 hover:border-white/30 transition-all text-[10px] tracking-[0.2em] uppercase font-mono cursor-pointer"
+          >
+            Exit
+            <span className="text-white/25 text-[9px] ml-1">ESC</span>
+          </motion.button>
 
           {/* Header info */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1, duration: 0.8 }}
-            className="absolute top-8 left-1/2 -translate-x-1/2 text-center"
+            transition={{ delay: 0.8, duration: 0.8 }}
+            className="absolute top-7 left-1/2 -translate-x-1/2 text-center"
           >
-            <p className="text-[10px] tracking-[0.4em] uppercase text-white/20 font-mono">
+            <p className="text-[11px] tracking-[0.4em] uppercase text-white/40 font-mono">
               Night sky above Combe Lodge
             </p>
-            <p className="text-[9px] tracking-[0.2em] uppercase text-white/12 font-mono mt-1">
-              {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} · {stars.length} stars visible
+            <p className="text-[10px] tracking-[0.2em] uppercase text-white/25 font-mono mt-1.5">
+              {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} &middot; {stars.length} stars visible &middot; 51.18°N
             </p>
           </motion.div>
 
@@ -320,30 +439,25 @@ export default function StarMap() {
                 transition={{ duration: 0.15 }}
                 className="fixed pointer-events-none z-[101]"
                 style={{
-                  left: mousePos.x + 16,
-                  top: mousePos.y - 10,
+                  left: mousePos.x + 20,
+                  top: mousePos.y - 16,
                 }}
               >
-                {/* Connecting line from star to tooltip */}
-                <div className="relative">
-                  <div className="bg-black/70 backdrop-blur-md border border-white/10 rounded-lg px-3.5 py-2.5 min-w-[140px]">
-                    <p className="text-white/90 text-xs font-sans font-medium tracking-wide">
-                      {hovered.name}
-                    </p>
-                    <div className="flex items-center gap-3 mt-1.5">
-                      <div>
-                        <p className="text-[8px] tracking-[0.15em] uppercase text-white/25 font-mono">Constellation</p>
-                        <p className="text-[11px] text-white/50 font-sans">{hovered.constellation}</p>
-                      </div>
-                      <div className="w-px h-5 bg-white/10" />
-                      <div>
-                        <p className="text-[8px] tracking-[0.15em] uppercase text-white/25 font-mono">Magnitude</p>
-                        <p className="text-[11px] text-white/50 font-mono">{hovered.mag.toFixed(2)}</p>
-                      </div>
+                <div className="bg-black/80 backdrop-blur-xl border border-white/15 rounded-xl px-4 py-3 min-w-[160px] shadow-2xl shadow-black/50">
+                  <p className="text-white text-sm font-sans font-medium tracking-wide">
+                    {hovered.name}
+                  </p>
+                  <p className="text-[10px] text-white/40 font-sans mt-0.5">{hovered.constellation}</p>
+                  <div className="h-px bg-white/8 my-2.5" />
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="text-[8px] tracking-[0.15em] uppercase text-white/30 font-mono">Mag</p>
+                      <p className="text-[12px] text-white/60 font-mono mt-0.5">{hovered.mag.toFixed(2)}</p>
                     </div>
-                    <div className="mt-1.5">
-                      <p className="text-[8px] tracking-[0.15em] uppercase text-white/25 font-mono">Altitude</p>
-                      <p className="text-[11px] text-white/50 font-mono">{hovered.alt.toFixed(1)}°</p>
+                    <div className="w-px h-6 bg-white/8" />
+                    <div>
+                      <p className="text-[8px] tracking-[0.15em] uppercase text-white/30 font-mono">Alt</p>
+                      <p className="text-[12px] text-white/60 font-mono mt-0.5">{hovered.alt.toFixed(1)}°</p>
                     </div>
                   </div>
                 </div>
@@ -358,23 +472,25 @@ export default function StarMap() {
               style={{ left: mousePos.x, top: mousePos.y }}
             >
               <div className="absolute -translate-x-1/2 -translate-y-1/2">
-                <div className="w-px h-3 bg-white/10 absolute -top-4 left-1/2 -translate-x-1/2" />
-                <div className="w-px h-3 bg-white/10 absolute top-1 left-1/2 -translate-x-1/2" />
-                <div className="h-px w-3 bg-white/10 absolute top-0 -left-4 translate-y-1/2" />
-                <div className="h-px w-3 bg-white/10 absolute top-0 left-1 translate-y-1/2" />
+                <div className="w-px h-4 bg-white/15 absolute -top-5 left-1/2 -translate-x-1/2" />
+                <div className="w-px h-4 bg-white/15 absolute top-1 left-1/2 -translate-x-1/2" />
+                <div className="h-px w-4 bg-white/15 absolute top-0 -left-5 translate-y-1/2" />
+                <div className="h-px w-4 bg-white/15 absolute top-0 left-1 translate-y-1/2" />
               </div>
             </div>
           )}
 
-          {/* Exit hint */}
-          <motion.p
+          {/* Bottom hint */}
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 2 }}
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 text-[9px] tracking-[0.3em] uppercase text-white/12 font-mono"
+            className="absolute bottom-7 left-1/2 -translate-x-1/2 text-center"
           >
-            Click or move to return
-          </motion.p>
+            <p className="text-[10px] tracking-[0.25em] uppercase text-white/25 font-mono">
+              Hover stars to explore &middot; Press ESC or click Exit to return
+            </p>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
