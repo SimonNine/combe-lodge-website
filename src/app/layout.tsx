@@ -3,6 +3,7 @@ import { DM_Serif_Display, DM_Sans, Space_Grotesk } from "next/font/google";
 import { ThemeProvider } from "@/context/ThemeContext";
 import FloatingBookButton from "@/components/ui/FloatingBookButton";
 import HotTubGauge from "@/components/ui/HotTubGauge";
+import StarMap from "@/components/ui/StarMap";
 import "./globals.css";
 
 const dmSerif = DM_Serif_Display({
@@ -65,6 +66,7 @@ export default function RootLayout({
           {children}
           <FloatingBookButton />
           <HotTubGauge />
+          <StarMap />
         </ThemeProvider>
       </body>
     </html>
